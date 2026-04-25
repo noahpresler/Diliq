@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getBrief } from "@/lib/ai/brief";
 
 export const runtime = "nodejs";
-export const maxDuration = 300;
+export const maxDuration = 120;
 
 const CACHE_HEADERS = {
   "Cache-Control":
