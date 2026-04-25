@@ -122,7 +122,7 @@ const inflight = new Map<string, Promise<Brief>>();
 
 export async function getBrief(slug: string): Promise<Brief> {
   const company = await resolveCompany(slug);
-  const key = `brief:${company.slug}`;
+  const key = `brief:v2:${company.slug}`;
 
   const cached = await kvGet<Brief>(key);
   if (cached) return cached;
