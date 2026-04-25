@@ -10,7 +10,7 @@ export const anthropic =
   globalThis.__anthropic ?? (globalThis.__anthropic = new Anthropic());
 
 export const MODEL_DEEP =
-  process.env.ANTHROPIC_MODEL_DEEP ?? "claude-opus-4-7";
+  process.env.ANTHROPIC_MODEL_DEEP ?? "claude-sonnet-4-6";
 
 export const MODEL_FAST =
   process.env.ANTHROPIC_MODEL_FAST ?? "claude-haiku-4-5-20251001";
