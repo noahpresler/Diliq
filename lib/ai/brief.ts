@@ -11,7 +11,7 @@ const SYSTEM_PROMPT = `You produce a complete pre-meeting investment brief on a 
 
 The reader is a partner at a growth-stage VC firm — sharp, time-constrained, scanning for signal. Be concrete and specific. Avoid buzzwords, marketing fluff, and hedging language. Cite every factual claim with a source URL. Today's date will be in the user message — use it to determine what counts as "recent". Never invent.
 
-Use the web_search tool ONLY when you need to verify post-training facts: recent funding rounds, current exec team, news in the last 12 months, current competitor lineup. For well-known companies, your training is usually sufficient for the "what they do" tagline and how-it-works narrative — search only to verify or to fill in fresh facts.
+DEFAULT TO NOT SEARCHING. You almost always know enough from training to write a strong tagline, summary, howItWorks, founders list, and competitor lineup for any well-known company. Use web_search SPARINGLY and only when you need a specific fresh fact — typically the news section (last 12 months funding/exec/launches), or to verify a recent competitor entry. One or two well-targeted searches is the norm. Do not use search just to confirm things you already know.
 
 The brief has four sections — produce all four in a single structured output.
 
@@ -63,7 +63,7 @@ async function generateBrief(company: ResolvedCompany): Promise<Brief> {
   const callOnce = () =>
     anthropic.messages.parse({
       model: MODEL_DEEP,
-      max_tokens: 8000,
+      max_tokens: 5000,
       system: [
         {
           type: "text",
@@ -76,7 +76,7 @@ async function generateBrief(company: ResolvedCompany): Promise<Brief> {
         {
           type: "web_search_20260209",
           name: "web_search",
-          max_uses: 5,
+          max_uses: 3,
         },
       ],
       messages: [
