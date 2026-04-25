@@ -8,6 +8,7 @@ import { friendlyError } from "@/components/brief/section-card";
 import { WhatCard } from "@/components/brief/what-card";
 import { FoundersCard } from "@/components/brief/founders-card";
 import { NewsCard } from "@/components/brief/news-card";
+import { CompetitorsCard } from "@/components/brief/competitors-card";
 
 export async function generateMetadata({
   params,
@@ -96,9 +97,18 @@ export default async function CompanyPage({
       </div>
 
       <section className="mt-10 grid gap-5">
-        <WhatCard slug={company.slug} />
-        <FoundersCard slug={company.slug} />
-        <NewsCard slug={company.slug} />
+        <Suspense fallback={<SectionSkeleton title="What they do" />}>
+          <WhatCard slug={company.slug} />
+        </Suspense>
+        <Suspense fallback={<SectionSkeleton title="Founders & key people" />}>
+          <FoundersCard slug={company.slug} />
+        </Suspense>
+        <Suspense fallback={<SectionSkeleton title="Recent news" />}>
+          <NewsCard slug={company.slug} />
+        </Suspense>
+        <Suspense fallback={<SectionSkeleton title="Competitive landscape" />}>
+          <CompetitorsCard slug={company.slug} />
+        </Suspense>
       </section>
 
       <footer className="mt-16 border-t border-white/[0.06] pt-6 text-center text-xs text-white/30">

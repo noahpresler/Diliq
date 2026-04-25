@@ -8,9 +8,11 @@ import {
   WhatSchema,
   FoundersSchema,
   NewsSchema,
+  CompetitorsSchema,
   type WhatSection,
   type FoundersSection,
   type NewsSection,
+  type CompetitorsSection,
   type ResolvedCompany,
 } from "./schemas";
 
@@ -43,8 +45,9 @@ For each person:
 - role: e.g. 'Co-founder & CEO', 'CTO'
 - background: 1-2 sentences. Lead with their most impressive prior experience. Examples: "Previously led payments infrastructure at Stripe (engineering #15)" or "Y Combinator partner 2018-2022, prior founder of TextIO".
 - notableSignal: optional. A standout fact — exit, recognized award, distinctive credential. Use sparingly. null if nothing stands out.
+- linkedinUrl: their LinkedIn profile URL if you can verify it via search (e.g. 'https://www.linkedin.com/in/handle'). null if not found or uncertain — do not guess handles.
 
-Never invent a credential or prior employer.`;
+Never invent a credential, prior employer, or LinkedIn URL.`;
 
 const NEWS_SYSTEM = `You research recent news about a company for a venture investor's pre-meeting brief.
 
@@ -68,6 +71,37 @@ For each item (max 8):
 - category: one of 'funding', 'product', 'people', 'press', 'other'
 
 Sort newest first. Never invent.`;
+
+const COMPETITORS_SYSTEM = `You map a company's direct competitive landscape for a venture investor's pre-meeting brief.
+
+${VC_PERSONA}
+
+Use web search. Identify the 3–5 most directly competitive companies — same buyer, overlapping product wedge. Skip adjacent or aspirational comps. Order by how directly they compete, most relevant first.
+
+For each competitor:
+- name: canonical name
+- slug: URL-safe lowercase kebab-case (the user can navigate /c/<slug>)
+- domain: primary domain (e.g. 'openai.com'), or null if uncertain
+- tagline: ~10–15 words, concrete one-liner
+- chips: EXACTLY four chips, one per dimension in this order — product, pricing, perception, leadership.
+
+For each chip:
+- dimension: 'product' | 'pricing' | 'perception' | 'leadership'
+- verdict: from the SUBJECT company's perspective vs. THIS competitor.
+  - 'lead'  → subject is meaningfully ahead on this axis
+  - 'lag'   → competitor is meaningfully ahead on this axis
+  - 'equal' → roughly comparable; use when there's no honest edge either way
+- description: ONE sentence with concrete evidence. Reference real features, real prices, named customers, named execs, recognized awards. No hedging buzzwords ('innovative', 'best-in-class').
+
+How to think about each dimension:
+- product: capability, depth, breadth, quality, differentiation, technical moat
+- pricing: list price, packaging, value-for-money, free tier, enterprise contract terms
+- perception: brand strength, analyst/press positioning, developer/customer love, market share narrative
+- leadership: founder/exec calibre, prior wins, recognized depth of bench
+
+Default to 'equal' when you cannot defend a clear lead/lag with a specific fact. Better honest than puffy. Never invent customers, prices, or executives.
+
+Also output marketSummary: 1–2 sentences framing how competition actually plays out (e.g. "incumbents compete on enterprise distribution; new entrants on model quality").`;
 
 interface SectionSpec<T> {
   id: string;
@@ -98,6 +132,14 @@ const NEWS_SPEC: SectionSpec<NewsSection> = {
   systemPrompt: NEWS_SYSTEM,
   userPrompt: (c, today) =>
     `Research recent news (last 12 months) about ${c.name}${c.domain ? ` (${c.domain})` : ""}. Today's date: ${today}.`,
+};
+
+const COMPETITORS_SPEC: SectionSpec<CompetitorsSection> = {
+  id: "competitors",
+  schema: CompetitorsSchema,
+  systemPrompt: COMPETITORS_SYSTEM,
+  userPrompt: (c, today) =>
+    `Identify and compare the 3-5 most direct competitors of ${c.name}${c.domain ? ` (${c.domain})` : ""}. For each, deliver the four-dimension chip comparison from ${c.name}'s perspective. Today's date: ${today}.`,
 };
 
 function isTransient(err: unknown) {
@@ -170,7 +212,7 @@ const cachedFounders = unstable_cache(
     const company = await resolveCompany(slug);
     return runSection(FOUNDERS_SPEC, company);
   },
-  ["section-founders"],
+  ["section-founders-v2"],
   { revalidate: SECTION_TTL_SECONDS },
 );
 
@@ -183,39 +225,16 @@ const cachedNews = unstable_cache(
   { revalidate: SECTION_TTL_SECONDS },
 );
 
-// Dedupe concurrent in-flight calls per (section, slug). unstable_cache
-// memoizes completed results but doesn't share an in-flight promise, so two
-// near-simultaneous requests would each trigger their own Anthropic call.
-const inflight = new Map<string, Promise<unknown>>();
-function dedupe<T>(key: string, fn: () => Promise<T>): Promise<T> {
-  const existing = inflight.get(key) as Promise<T> | undefined;
-  if (existing) return existing;
-  const p = fn().finally(() => inflight.delete(key));
-  inflight.set(key, p);
-  return p;
-}
+const cachedCompetitors = unstable_cache(
+  async (slug: string) => {
+    const company = await resolveCompany(slug);
+    return runSection(COMPETITORS_SPEC, company);
+  },
+  ["section-competitors"],
+  { revalidate: SECTION_TTL_SECONDS },
+);
 
-export const runWhat = (slug: string) =>
-  dedupe(`what:${slug}`, () => cachedWhat(slug));
-export const runFounders = (slug: string) =>
-  dedupe(`founders:${slug}`, () => cachedFounders(slug));
-export const runNews = (slug: string) =>
-  dedupe(`news:${slug}`, () => cachedNews(slug));
-
-export const SECTION_IDS = ["what", "founders", "news"] as const;
-export type SectionId = (typeof SECTION_IDS)[number];
-
-export function isSectionId(value: string): value is SectionId {
-  return (SECTION_IDS as readonly string[]).includes(value);
-}
-
-export function runSectionById(id: SectionId, slug: string) {
-  switch (id) {
-    case "what":
-      return runWhat(slug);
-    case "founders":
-      return runFounders(slug);
-    case "news":
-      return runNews(slug);
-  }
-}
+export const runWhat = (slug: string) => cachedWhat(slug);
+export const runFounders = (slug: string) => cachedFounders(slug);
+export const runNews = (slug: string) => cachedNews(slug);
+export const runCompetitors = (slug: string) => cachedCompetitors(slug);
