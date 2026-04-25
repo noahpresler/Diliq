@@ -1,6 +1,6 @@
 import "server-only";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { anthropic, MODEL_FAST } from "./claude";
+import { anthropic, MODEL_DEEP } from "./claude";
 import { resolveCompany } from "./resolver";
 import { BriefSchema, type Brief, type ResolvedCompany } from "./schemas";
 import { kvGet, kvSet } from "@/lib/kv";
@@ -11,7 +11,7 @@ const SYSTEM_PROMPT = `You produce a complete pre-meeting investment brief on a 
 
 The reader is a partner at a growth-stage VC firm — sharp, time-constrained, scanning for signal. Be concrete and specific. Avoid buzzwords, marketing fluff, and hedging language. Cite every factual claim with a source URL. Today's date will be in the user message — use it to determine what counts as "recent". Never invent.
 
-DEFAULT TO NOT SEARCHING. You almost always know enough from training to write a strong tagline, summary, howItWorks, founders list, and competitor lineup for any well-known company. Use web_search SPARINGLY and only when you need a specific fresh fact — typically the news section (last 12 months funding/exec/launches), or to verify a recent competitor entry. One or two well-targeted searches is the norm. Do not use search just to confirm things you already know.
+Work from your training data only. You have no web access in this turn. For each claim, cite a stable URL you remember (company site, well-known publication). If you cannot confidently recall a fact, omit it — never fabricate. For the news section, only include events you confidently recall from training; if you can't, return an empty items array.
 
 The brief has four sections — produce all four in a single structured output.
 
@@ -64,7 +64,7 @@ async function generateBrief(company: ResolvedCompany): Promise<Brief> {
   const callOnce = () =>
     anthropic.messages.parse(
       {
-        model: MODEL_FAST,
+        model: MODEL_DEEP,
         max_tokens: 5000,
         system: [
           {
@@ -74,13 +74,6 @@ async function generateBrief(company: ResolvedCompany): Promise<Brief> {
           },
         ],
         output_config: { format: zodOutputFormat(BriefSchema as never) },
-        tools: [
-          {
-            type: "web_search_20260209",
-            name: "web_search",
-            max_uses: 2,
-          },
-        ],
         messages: [
           {
             role: "user",
