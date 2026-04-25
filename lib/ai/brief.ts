@@ -53,7 +53,8 @@ Dimension semantics:
 
 function isTransient(err: unknown) {
   const msg = err instanceof Error ? err.message : String(err);
-  return /\b(429|529|502|503|504)\b|overloaded|rate.?limit|ECONNRESET|ETIMEDOUT|fetch failed/i.test(
+  // 408 = client-set timeout from the SDK; we want to retry once on those too.
+  return /\b(408|429|529|502|503|504)\b|overloaded|rate.?limit|ECONNRESET|ETIMEDOUT|fetch failed|timed?\s*out/i.test(
     msg,
   );
 }
@@ -61,41 +62,44 @@ function isTransient(err: unknown) {
 async function generateBrief(company: ResolvedCompany): Promise<Brief> {
   const today = new Date().toISOString().slice(0, 10);
   const callOnce = () =>
-    anthropic.messages.parse({
-      model: MODEL_DEEP,
-      max_tokens: 5000,
-      system: [
-        {
-          type: "text",
-          text: SYSTEM_PROMPT,
-          cache_control: { type: "ephemeral" },
-        },
-      ],
-      output_config: { format: zodOutputFormat(BriefSchema as never) },
-      tools: [
-        {
-          type: "web_search_20260209",
-          name: "web_search",
-          max_uses: 3,
-        },
-      ],
-      messages: [
-        {
-          role: "user",
-          content: `Produce a complete pre-meeting investment brief on ${company.name}${company.domain ? ` (${company.domain})` : ""}. Today's date: ${today}.`,
-        },
-      ],
-    });
+    anthropic.messages.parse(
+      {
+        model: MODEL_DEEP,
+        max_tokens: 5000,
+        system: [
+          {
+            type: "text",
+            text: SYSTEM_PROMPT,
+            cache_control: { type: "ephemeral" },
+          },
+        ],
+        output_config: { format: zodOutputFormat(BriefSchema as never) },
+        tools: [
+          {
+            type: "web_search_20260209",
+            name: "web_search",
+            max_uses: 2,
+          },
+        ],
+        messages: [
+          {
+            role: "user",
+            content: `Produce a complete pre-meeting investment brief on ${company.name}${company.domain ? ` (${company.domain})` : ""}. Today's date: ${today}.`,
+          },
+        ],
+      },
+      { timeout: 90_000 },
+    );
 
   let response: Awaited<ReturnType<typeof callOnce>> | undefined;
   let lastErr: unknown;
-  for (let attempt = 0; attempt < 3; attempt++) {
+  for (let attempt = 0; attempt < 2; attempt++) {
     try {
       response = await callOnce();
       break;
     } catch (err) {
       lastErr = err;
-      if (!isTransient(err) || attempt === 2) throw err;
+      if (!isTransient(err) || attempt === 1) throw err;
       await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
     }
   }
