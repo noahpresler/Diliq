@@ -1,6 +1,6 @@
 import "server-only";
 import { unstable_cache } from "next/cache";
-import { z } from "zod";
+import { z } from "zod/v4";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
 import { anthropic, MODEL_DEEP } from "./claude";
 import { resolveCompany } from "./resolver";
@@ -100,12 +100,20 @@ const NEWS_SPEC: SectionSpec<NewsSection> = {
     `Research recent news (last 12 months) about ${c.name}${c.domain ? ` (${c.domain})` : ""}. Today's date: ${today}.`,
 };
 
+function isTransient(err: unknown) {
+  const msg = err instanceof Error ? err.message : String(err);
+  return /\b(429|529|502|503|504)\b|overloaded|rate.?limit|ECONNRESET|ETIMEDOUT|fetch failed/i.test(
+    msg,
+  );
+}
+
 async function runSection<T>(
   spec: SectionSpec<T>,
   company: ResolvedCompany,
 ): Promise<T> {
   const today = new Date().toISOString().slice(0, 10);
-  const response = await anthropic.messages.parse({
+  const callOnce = () =>
+    anthropic.messages.parse({
     model: MODEL_DEEP,
     max_tokens: 16000,
     thinking: { type: "adaptive" },
@@ -116,7 +124,7 @@ async function runSection<T>(
         cache_control: { type: "ephemeral" },
       },
     ],
-    output_config: { format: zodOutputFormat(spec.schema) },
+    output_config: { format: zodOutputFormat(spec.schema as never) },
     tools: [
       {
         type: "web_search_20260209",
@@ -126,6 +134,20 @@ async function runSection<T>(
     ],
     messages: [{ role: "user", content: spec.userPrompt(company, today) }],
   });
+
+  let response: Awaited<ReturnType<typeof callOnce>> | undefined;
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      response = await callOnce();
+      break;
+    } catch (err) {
+      lastErr = err;
+      if (!isTransient(err) || attempt === 2) throw err;
+      await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+    }
+  }
+  if (!response) throw lastErr ?? new Error("no response");
   if (!response.parsed_output) {
     throw new Error(
       `Section "${spec.id}" produced no parsed output (stop_reason=${response.stop_reason})`,

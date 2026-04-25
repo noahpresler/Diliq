@@ -8,7 +8,9 @@ export const metadata: Metadata = {
   description:
     "Search any company. Get an instant, source-cited investment brief.",
   metadataBase: new URL(
-    process.env.NEXT_PUBLIC_APP_URL ?? "https://diliq.presler.me",
+    process.env.NEXT_PUBLIC_APP_URL?.startsWith("http")
+      ? process.env.NEXT_PUBLIC_APP_URL
+      : "https://diliq.presler.me",
   ),
 };
 
