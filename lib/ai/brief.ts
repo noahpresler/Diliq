@@ -8,13 +8,11 @@ import {
   FoundersSchema,
   NewsSchema,
   CompetitorsSchema,
-  type Brief,
   type ResolvedCompany,
 } from "./schemas";
 import { kvGet, kvSet } from "@/lib/kv";
 
-const BRIEF_TTL_SECONDS = 60 * 60 * 24; // 24 hours
-const HARD_TIMEOUT_MS = 90_000;
+const PART_TTL_SECONDS = 60 * 60 * 24; // 24 hours
 
 const VC_PERSONA = `The reader is a partner at a growth-stage VC firm — sharp, time-constrained, scanning for signal. Be concrete and specific. Avoid buzzwords, marketing fluff, and hedging language. Cite every factual claim with a source URL. Today's date will be in the user message — use it to determine what counts as "recent". Never invent.`;
 
@@ -28,17 +26,17 @@ Work from your training data only. You have no web access in this turn. For each
 - tagline: ~10-15 words. The one-line "what they are." Specific and concrete. Bad: 'AI-powered platform.' Good: 'Anthropic builds Claude, an AI assistant aimed at safety-focused enterprises.'
 - summary: 2-3 sentences expanding the tagline — problem, customer, why it matters.
 - howItWorks: 1-2 paragraphs on product mechanics, business model, key differentiator. Specific, not generic SaaS-speak.
-- sources: every URL you cited for this section (max 8).
+- sources: every URL you cited (max 8).
 
 ## competitors — competitive landscape
-- marketSummary: 1-2 sentences framing how competition actually plays out (e.g. "incumbents compete on enterprise distribution; new entrants on model quality").
-- competitors: 3-5 most directly competitive companies (same buyer, overlapping wedge — skip adjacent or aspirational). Order by how directly they compete, most relevant first.
+- marketSummary: 1-2 sentences framing how competition actually plays out.
+- competitors: 3-5 most directly competitive companies (same buyer, overlapping wedge). Order by how directly they compete, most relevant first.
   - name, slug (URL-safe lowercase kebab-case), domain (or null), tagline (~10-15 concrete words).
   - chips: EXACTLY four chips, one per dimension in order — product, pricing, perception, leadership.
     - dimension: 'product' | 'pricing' | 'perception' | 'leadership'
-    - verdict: from THE SUBJECT COMPANY's perspective vs. THIS competitor — 'lead' (subject ahead), 'lag' (competitor ahead), 'equal' (roughly comparable). Default to 'equal' when you cannot defend a clear lead/lag with a specific fact.
-    - description: ONE sentence with concrete evidence — features, prices, named customers, named execs. No hedging buzzwords.
-- sources: every URL cited for this section (max 8).
+    - verdict: from THE SUBJECT COMPANY's perspective vs. THIS competitor — 'lead', 'lag', or 'equal'. Default to 'equal' when you cannot defend a clear lead/lag with a specific fact.
+    - description: ONE sentence with concrete evidence — features, prices, named customers, named execs.
+- sources: every URL cited (max 8).
 
 Dimension semantics: product = capability/depth/moat; pricing = list price/packaging/free tier; perception = brand/analyst-press/dev-love; leadership = founder/exec calibre.`;
 
@@ -63,26 +61,27 @@ Budget your searches: 2-3 well-targeted queries should cover both sections. Neve
 Last 12 months, prioritized: funding > exec moves > major launches > customer wins > regulatory. Skip routine PR fluff.
 - items: max 8, sorted newest first. For each: title, summary (1-2 sentences — the takeaway, not the lede), url, source (publication name like 'TechCrunch'), date (ISO 8601 YYYY-MM-DD if known else YYYY-MM), category (one of 'funding' | 'product' | 'people' | 'press' | 'other').`;
 
-const StaticPartSchema = z.object({
+export const StaticPartSchema = z.object({
   what: WhatSchema,
   competitors: CompetitorsSchema,
 });
-type StaticPart = z.infer<typeof StaticPartSchema>;
+export type StaticPart = z.infer<typeof StaticPartSchema>;
 
-const FreshPartSchema = z.object({
+export const FreshPartSchema = z.object({
   founders: FoundersSchema,
   news: NewsSchema,
 });
-type FreshPart = z.infer<typeof FreshPartSchema>;
+export type FreshPart = z.infer<typeof FreshPartSchema>;
 
 async function callPart<T>(
   systemPrompt: string,
   schema: z.ZodType<T>,
   userPrompt: string,
   withSearch: boolean,
+  hardTimeoutMs: number,
 ): Promise<T> {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), HARD_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), hardTimeoutMs);
   try {
     const response = await anthropic.messages.parse(
       {
@@ -122,41 +121,61 @@ async function callPart<T>(
   }
 }
 
-async function generateBrief(company: ResolvedCompany): Promise<Brief> {
+function userPromptFor(company: ResolvedCompany) {
   const today = new Date().toISOString().slice(0, 10);
   const id = `${company.name}${company.domain ? ` (${company.domain})` : ""}`;
-  const userPrompt = `Subject company: ${id}. Today's date: ${today}.`;
-
-  const [staticPart, freshPart]: [StaticPart, FreshPart] = await Promise.all([
-    callPart(STATIC_PROMPT, StaticPartSchema, userPrompt, false),
-    callPart(FRESH_PROMPT, FreshPartSchema, userPrompt, true),
-  ]);
-
-  return {
-    what: staticPart.what,
-    competitors: staticPart.competitors,
-    founders: freshPart.founders,
-    news: freshPart.news,
-  };
+  return `Subject company: ${id}. Today's date: ${today}.`;
 }
 
-const inflight = new Map<string, Promise<Brief>>();
+const inflightStatic = new Map<string, Promise<StaticPart>>();
+const inflightFresh = new Map<string, Promise<FreshPart>>();
 
-export async function getBrief(slug: string): Promise<Brief> {
+export async function getStaticPart(slug: string): Promise<StaticPart> {
   const company = await resolveCompany(slug);
-  const key = `brief:v3:${company.slug}`;
+  const key = `brief:v3:static:${company.slug}`;
 
-  const cached = await kvGet<Brief>(key);
+  const cached = await kvGet<StaticPart>(key);
   if (cached) return cached;
 
-  const existing = inflight.get(key);
+  const existing = inflightStatic.get(key);
   if (existing) return existing;
 
   const p = (async () => {
-    const brief = await generateBrief(company);
-    await kvSet(key, brief, BRIEF_TTL_SECONDS);
-    return brief;
-  })().finally(() => inflight.delete(key));
-  inflight.set(key, p);
+    const data = await callPart(
+      STATIC_PROMPT,
+      StaticPartSchema,
+      userPromptFor(company),
+      false,
+      50_000,
+    );
+    await kvSet(key, data, PART_TTL_SECONDS);
+    return data;
+  })().finally(() => inflightStatic.delete(key));
+  inflightStatic.set(key, p);
+  return p;
+}
+
+export async function getFreshPart(slug: string): Promise<FreshPart> {
+  const company = await resolveCompany(slug);
+  const key = `brief:v3:fresh:${company.slug}`;
+
+  const cached = await kvGet<FreshPart>(key);
+  if (cached) return cached;
+
+  const existing = inflightFresh.get(key);
+  if (existing) return existing;
+
+  const p = (async () => {
+    const data = await callPart(
+      FRESH_PROMPT,
+      FreshPartSchema,
+      userPromptFor(company),
+      true,
+      170_000,
+    );
+    await kvSet(key, data, PART_TTL_SECONDS);
+    return data;
+  })().finally(() => inflightFresh.delete(key));
+  inflightFresh.set(key, p);
   return p;
 }

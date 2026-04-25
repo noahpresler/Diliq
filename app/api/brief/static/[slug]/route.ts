@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { getBrief } from "@/lib/ai/brief";
+import { getStaticPart } from "@/lib/ai/brief";
 
 export const runtime = "nodejs";
-export const maxDuration = 120;
+export const maxDuration = 60;
 
 const CACHE_HEADERS = {
   "Cache-Control":
@@ -15,7 +15,7 @@ export async function GET(
 ) {
   const { slug } = await params;
   try {
-    const data = await getBrief(decodeURIComponent(slug));
+    const data = await getStaticPart(decodeURIComponent(slug));
     return NextResponse.json({ ok: true, data }, { headers: CACHE_HEADERS });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

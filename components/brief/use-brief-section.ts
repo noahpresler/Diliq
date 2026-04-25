@@ -8,33 +8,50 @@ type State<T> =
   | { status: "ok"; data: T }
   | { status: "error"; error: string };
 
-const inflight = new Map<string, Promise<Brief>>();
-const resolved = new Map<string, Brief>();
+const STATIC_KEYS = ["what", "competitors"] as const;
+type StaticKey = (typeof STATIC_KEYS)[number];
+
+function endpointFor(key: keyof Brief): "static" | "fresh" {
+  return (STATIC_KEYS as readonly string[]).includes(key) ? "static" : "fresh";
+}
+
+const inflight = new Map<string, Promise<Record<string, unknown>>>();
+const resolved = new Map<string, Record<string, unknown>>();
 const failed = new Map<string, string>();
 
-function fetchBrief(slug: string): Promise<Brief> {
-  let p = inflight.get(slug);
+function cacheKey(slug: string, endpoint: "static" | "fresh") {
+  return `${endpoint}:${slug}`;
+}
+
+function fetchPart(
+  slug: string,
+  endpoint: "static" | "fresh",
+): Promise<Record<string, unknown>> {
+  const ck = cacheKey(slug, endpoint);
+  let p = inflight.get(ck);
   if (p) return p;
-  p = fetch(`/api/brief/${encodeURIComponent(slug)}`, { cache: "no-store" })
+  p = fetch(`/api/brief/${endpoint}/${encodeURIComponent(slug)}`, {
+    cache: "no-store",
+  })
     .then(async (res) => {
       const body = (await res.json().catch(() => null)) as
-        | { ok: true; data: Brief }
+        | { ok: true; data: Record<string, unknown> }
         | { ok: false; error: string }
         | null;
       if (!body) throw new Error(`HTTP ${res.status}`);
       if (!body.ok) throw new Error(body.error);
-      resolved.set(slug, body.data);
+      resolved.set(ck, body.data);
       return body.data;
     })
     .catch((err) => {
       const msg = err instanceof Error ? err.message : String(err);
-      failed.set(slug, msg);
+      failed.set(ck, msg);
       throw err;
     })
     .finally(() => {
-      inflight.delete(slug);
+      inflight.delete(ck);
     });
-  inflight.set(slug, p);
+  inflight.set(ck, p);
   return p;
 }
 
@@ -42,10 +59,13 @@ export function useBriefSection<K extends keyof Brief>(
   slug: string,
   key: K,
 ): State<Brief[K]> {
+  const endpoint = endpointFor(key);
+  const ck = cacheKey(slug, endpoint);
+
   const [state, setState] = useState<State<Brief[K]>>(() => {
-    const r = resolved.get(slug);
-    if (r) return { status: "ok", data: r[key] };
-    const f = failed.get(slug);
+    const r = resolved.get(ck);
+    if (r) return { status: "ok", data: r[key as string] as Brief[K] };
+    const f = failed.get(ck);
     if (f) return { status: "error", error: f };
     return { status: "loading" };
   });
@@ -53,12 +73,12 @@ export function useBriefSection<K extends keyof Brief>(
   useEffect(() => {
     let cancelled = false;
 
-    const r = resolved.get(slug);
+    const r = resolved.get(ck);
     if (r) {
-      setState({ status: "ok", data: r[key] });
+      setState({ status: "ok", data: r[key as string] as Brief[K] });
       return;
     }
-    const f = failed.get(slug);
+    const f = failed.get(ck);
     if (f) {
       setState({ status: "error", error: f });
       return;
@@ -66,12 +86,11 @@ export function useBriefSection<K extends keyof Brief>(
 
     setState({ status: "loading" });
 
-    // Engagement gate: a back-button bounce within 500ms cancels the timer
-    // before fetchBrief runs, so we never pay for users who didn't stick.
     const timer = setTimeout(() => {
-      fetchBrief(slug)
-        .then((brief) => {
-          if (!cancelled) setState({ status: "ok", data: brief[key] });
+      fetchPart(slug, endpoint)
+        .then((part) => {
+          if (!cancelled)
+            setState({ status: "ok", data: part[key as string] as Brief[K] });
         })
         .catch((err) => {
           if (!cancelled)
@@ -86,7 +105,7 @@ export function useBriefSection<K extends keyof Brief>(
       cancelled = true;
       clearTimeout(timer);
     };
-  }, [slug, key]);
+  }, [slug, key, endpoint, ck]);
 
   return state;
 }
