@@ -5,10 +5,12 @@ import { ArrowLeft } from "lucide-react";
 import { resolveCompany } from "@/lib/ai/resolver";
 import { Hero } from "@/components/brief/hero";
 import { friendlyError } from "@/components/brief/section-card";
+import { SectionSkeleton } from "@/components/brief/section-skeleton";
 import { WhatCard } from "@/components/brief/what-card";
 import { FoundersCard } from "@/components/brief/founders-card";
 import { NewsCard } from "@/components/brief/news-card";
 import { CompetitorsCard } from "@/components/brief/competitors-card";
+import { LazyMount } from "@/components/brief/lazy-mount";
 
 export async function generateMetadata({
   params,
@@ -99,8 +101,14 @@ export default async function CompanyPage({
       <section className="mt-10 grid gap-5">
         <WhatCard slug={company.slug} />
         <FoundersCard slug={company.slug} />
-        <NewsCard slug={company.slug} />
-        <CompetitorsCard slug={company.slug} />
+        <LazyMount fallback={<SectionSkeleton title="Recent news" />}>
+          <NewsCard slug={company.slug} />
+        </LazyMount>
+        <LazyMount
+          fallback={<SectionSkeleton title="Competitive landscape" />}
+        >
+          <CompetitorsCard slug={company.slug} />
+        </LazyMount>
       </section>
 
       <footer className="mt-16 border-t border-white/[0.06] pt-6 text-center text-xs text-white/30">

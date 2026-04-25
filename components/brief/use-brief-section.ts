@@ -65,20 +65,26 @@ export function useBriefSection<K extends keyof Brief>(
     }
 
     setState({ status: "loading" });
-    fetchBrief(slug)
-      .then((brief) => {
-        if (!cancelled) setState({ status: "ok", data: brief[key] });
-      })
-      .catch((err) => {
-        if (!cancelled)
-          setState({
-            status: "error",
-            error: err instanceof Error ? err.message : String(err),
-          });
-      });
+
+    // Engagement gate: a back-button bounce within 500ms cancels the timer
+    // before fetchBrief runs, so we never pay for users who didn't stick.
+    const timer = setTimeout(() => {
+      fetchBrief(slug)
+        .then((brief) => {
+          if (!cancelled) setState({ status: "ok", data: brief[key] });
+        })
+        .catch((err) => {
+          if (!cancelled)
+            setState({
+              status: "error",
+              error: err instanceof Error ? err.message : String(err),
+            });
+        });
+    }, 500);
 
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
   }, [slug, key]);
 
