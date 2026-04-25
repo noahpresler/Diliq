@@ -1,7 +1,12 @@
-import { runNews } from "@/lib/ai/sections";
-import { SectionCard } from "./section-card";
+"use client";
+
 import { ExternalLink } from "lucide-react";
-import type { NewsCategory } from "@/lib/ai/schemas";
+import type { NewsCategory, NewsSection } from "@/lib/ai/schemas";
+import { SectionCard } from "./section-card";
+import { SectionSkeleton } from "./section-skeleton";
+import { useSection } from "./use-section";
+
+const TITLE = "Recent news";
 
 const CATEGORY_STYLES: Record<NewsCategory, string> = {
   funding: "border-amber-300/30 bg-amber-300/[0.08] text-amber-200",
@@ -42,20 +47,16 @@ function hostOf(url: string) {
   }
 }
 
-export async function NewsCard({ slug }: { slug: string }) {
-  let data;
-  try {
-    data = await runNews(slug);
-  } catch (e) {
-    return (
-      <SectionCard
-        title="Recent news"
-        error={e instanceof Error ? e.message : "Unknown error"}
-      />
-    );
-  }
+export function NewsCard({ slug }: { slug: string }) {
+  const state = useSection<NewsSection>("news", slug);
+
+  if (state.status === "loading") return <SectionSkeleton title={TITLE} />;
+  if (state.status === "error")
+    return <SectionCard title={TITLE} error={state.error} />;
+
+  const data = state.data;
   return (
-    <SectionCard title="Recent news">
+    <SectionCard title={TITLE}>
       {data.items.length === 0 ? (
         <p className="text-sm text-white/55">
           No notable news found in the last 12 months.

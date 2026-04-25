@@ -1,21 +1,23 @@
-import { runWhat } from "@/lib/ai/sections";
-import { SectionCard } from "./section-card";
-import { SourceList } from "./source-list";
+"use client";
 
-export async function WhatCard({ slug }: { slug: string }) {
-  let data;
-  try {
-    data = await runWhat(slug);
-  } catch (e) {
-    return (
-      <SectionCard
-        title="What they do"
-        error={e instanceof Error ? e.message : "Unknown error"}
-      />
-    );
-  }
+import type { WhatSection } from "@/lib/ai/schemas";
+import { SectionCard } from "./section-card";
+import { SectionSkeleton } from "./section-skeleton";
+import { SourceList } from "./source-list";
+import { useSection } from "./use-section";
+
+const TITLE = "What they do";
+
+export function WhatCard({ slug }: { slug: string }) {
+  const state = useSection<WhatSection>("what", slug);
+
+  if (state.status === "loading") return <SectionSkeleton title={TITLE} />;
+  if (state.status === "error")
+    return <SectionCard title={TITLE} error={state.error} />;
+
+  const data = state.data;
   return (
-    <SectionCard title="What they do">
+    <SectionCard title={TITLE}>
       <p className="text-2xl font-medium leading-snug tracking-tight text-white">
         {data.tagline}
       </p>

@@ -1,11 +1,9 @@
-import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { ArrowLeft } from "lucide-react";
 import { resolveCompany } from "@/lib/ai/resolver";
 import { Hero } from "@/components/brief/hero";
-import { SectionSkeleton } from "@/components/brief/section-skeleton";
 import { friendlyError } from "@/components/brief/section-card";
 import { WhatCard } from "@/components/brief/what-card";
 import { FoundersCard } from "@/components/brief/founders-card";
@@ -99,18 +97,10 @@ export default async function CompanyPage({
       </div>
 
       <section className="mt-10 grid gap-5">
-        <Suspense fallback={<SectionSkeleton title="What they do" />}>
-          <WhatCard slug={company.slug} />
-        </Suspense>
-        <Suspense fallback={<SectionSkeleton title="Founders & key people" />}>
-          <FoundersCard slug={company.slug} />
-        </Suspense>
-        <Suspense fallback={<SectionSkeleton title="Recent news" />}>
-          <NewsCard slug={company.slug} />
-        </Suspense>
-        <Suspense fallback={<SectionSkeleton title="Competitive landscape" />}>
-          <CompetitorsCard slug={company.slug} />
-        </Suspense>
+        <WhatCard slug={company.slug} />
+        <FoundersCard slug={company.slug} />
+        <NewsCard slug={company.slug} />
+        <CompetitorsCard slug={company.slug} />
       </section>
 
       <footer className="mt-16 border-t border-white/[0.06] pt-6 text-center text-xs text-white/30">

@@ -1,13 +1,19 @@
+"use client";
+
 import Link from "next/link";
 import { ArrowUpRight, ArrowRight, Minus, ArrowDownRight } from "lucide-react";
-import { runCompetitors } from "@/lib/ai/sections";
 import type {
   CompareChip,
   CompareDimension,
   CompareVerdict,
+  CompetitorsSection,
 } from "@/lib/ai/schemas";
 import { SectionCard } from "./section-card";
+import { SectionSkeleton } from "./section-skeleton";
 import { SourceList } from "./source-list";
+import { useSection } from "./use-section";
+
+const TITLE = "Competitive landscape";
 
 const DIMENSION_LABEL: Record<CompareDimension, string> = {
   product: "Product",
@@ -57,21 +63,16 @@ function chipFor(
   return chips.find((c) => c.dimension === dimension);
 }
 
-export async function CompetitorsCard({ slug }: { slug: string }) {
-  let data;
-  try {
-    data = await runCompetitors(slug);
-  } catch (e) {
-    return (
-      <SectionCard
-        title="Competitive landscape"
-        error={e instanceof Error ? e.message : "Unknown error"}
-      />
-    );
-  }
+export function CompetitorsCard({ slug }: { slug: string }) {
+  const state = useSection<CompetitorsSection>("competitors", slug);
 
+  if (state.status === "loading") return <SectionSkeleton title={TITLE} />;
+  if (state.status === "error")
+    return <SectionCard title={TITLE} error={state.error} />;
+
+  const data = state.data;
   return (
-    <SectionCard title="Competitive landscape">
+    <SectionCard title={TITLE}>
       <p className="text-sm leading-relaxed text-white/70">
         {data.marketSummary}
       </p>
