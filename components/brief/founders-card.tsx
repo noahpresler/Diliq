@@ -1,10 +1,9 @@
 "use client";
 
-import type { FoundersSection } from "@/lib/ai/schemas";
 import { SectionCard } from "./section-card";
 import { SectionSkeleton } from "./section-skeleton";
 import { SourceList } from "./source-list";
-import { useSection } from "./use-section";
+import { useBriefSection } from "./use-brief-section";
 
 const TITLE = "Founders & key people";
 
@@ -18,7 +17,7 @@ function initialsOf(name: string) {
 }
 
 export function FoundersCard({ slug }: { slug: string }) {
-  const state = useSection<FoundersSection>("founders", slug);
+  const state = useBriefSection(slug, "founders");
 
   if (state.status === "loading") return <SectionSkeleton title={TITLE} />;
   if (state.status === "error")

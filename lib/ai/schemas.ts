@@ -165,3 +165,11 @@ export const CompetitorsSchema = z.object({
   sources: z.array(SourceSchema).max(8),
 });
 export type CompetitorsSection = z.infer<typeof CompetitorsSchema>;
+
+export const BriefSchema = z.object({
+  what: WhatSchema,
+  founders: FoundersSchema,
+  news: NewsSchema,
+  competitors: CompetitorsSchema,
+});
+export type Brief = z.infer<typeof BriefSchema>;

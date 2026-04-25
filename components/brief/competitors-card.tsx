@@ -6,12 +6,11 @@ import type {
   CompareChip,
   CompareDimension,
   CompareVerdict,
-  CompetitorsSection,
 } from "@/lib/ai/schemas";
 import { SectionCard } from "./section-card";
 import { SectionSkeleton } from "./section-skeleton";
 import { SourceList } from "./source-list";
-import { useSection } from "./use-section";
+import { useBriefSection } from "./use-brief-section";
 
 const TITLE = "Competitive landscape";
 
@@ -64,7 +63,7 @@ function chipFor(
 }
 
 export function CompetitorsCard({ slug }: { slug: string }) {
-  const state = useSection<CompetitorsSection>("competitors", slug);
+  const state = useBriefSection(slug, "competitors");
 
   if (state.status === "loading") return <SectionSkeleton title={TITLE} />;
   if (state.status === "error")

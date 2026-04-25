@@ -1,19 +1,16 @@
 import { NextResponse } from "next/server";
-import { isSectionId, runSectionById } from "@/lib/ai/sections";
+import { getBrief } from "@/lib/ai/brief";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function GET(
   _req: Request,
-  { params }: { params: Promise<{ id: string; slug: string }> },
+  { params }: { params: Promise<{ slug: string }> },
 ) {
-  const { id, slug } = await params;
-  if (!isSectionId(id)) {
-    return NextResponse.json({ ok: false, error: `Unknown section: ${id}` }, { status: 400 });
-  }
+  const { slug } = await params;
   try {
-    const data = await runSectionById(id, decodeURIComponent(slug));
+    const data = await getBrief(decodeURIComponent(slug));
     return NextResponse.json({ ok: true, data });
   } catch (e) {
     const message = e instanceof Error ? e.message : String(e);

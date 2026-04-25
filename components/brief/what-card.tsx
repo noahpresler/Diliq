@@ -1,15 +1,14 @@
 "use client";
 
-import type { WhatSection } from "@/lib/ai/schemas";
 import { SectionCard } from "./section-card";
 import { SectionSkeleton } from "./section-skeleton";
 import { SourceList } from "./source-list";
-import { useSection } from "./use-section";
+import { useBriefSection } from "./use-brief-section";
 
 const TITLE = "What they do";
 
 export function WhatCard({ slug }: { slug: string }) {
-  const state = useSection<WhatSection>("what", slug);
+  const state = useBriefSection(slug, "what");
 
   if (state.status === "loading") return <SectionSkeleton title={TITLE} />;
   if (state.status === "error")

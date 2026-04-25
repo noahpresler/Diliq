@@ -1,10 +1,10 @@
 "use client";
 
 import { ExternalLink } from "lucide-react";
-import type { NewsCategory, NewsSection } from "@/lib/ai/schemas";
+import type { NewsCategory } from "@/lib/ai/schemas";
 import { SectionCard } from "./section-card";
 import { SectionSkeleton } from "./section-skeleton";
-import { useSection } from "./use-section";
+import { useBriefSection } from "./use-brief-section";
 
 const TITLE = "Recent news";
 
@@ -48,7 +48,7 @@ function hostOf(url: string) {
 }
 
 export function NewsCard({ slug }: { slug: string }) {
-  const state = useSection<NewsSection>("news", slug);
+  const state = useBriefSection(slug, "news");
 
   if (state.status === "loading") return <SectionSkeleton title={TITLE} />;
   if (state.status === "error")
