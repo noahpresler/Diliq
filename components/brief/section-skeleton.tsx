@@ -1,6 +1,25 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import { SectionCard } from "./section-card";
 
+const STAGES = [
+  "Searching the web",
+  "Reading sources",
+  "Drafting brief",
+  "Almost there",
+];
+
 export function SectionSkeleton({ title }: { title: string }) {
+  const [stageIdx, setStageIdx] = useState(0);
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      setStageIdx((i) => Math.min(i + 1, STAGES.length - 1));
+    }, 6500);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <SectionCard title={title}>
       <div className="space-y-3">
@@ -22,7 +41,12 @@ export function SectionSkeleton({ title }: { title: string }) {
           <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-400 opacity-60" />
           <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-violet-400" />
         </span>
-        Researching…
+        <span
+          key={stageIdx}
+          className="animate-[fadeIn_400ms_ease-out] tabular-nums"
+        >
+          {STAGES[stageIdx]}…
+        </span>
       </p>
     </SectionCard>
   );

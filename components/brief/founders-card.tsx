@@ -1,6 +1,12 @@
-import { runFounders } from "@/lib/ai/sections";
+"use client";
+
+import type { FoundersSection } from "@/lib/ai/schemas";
 import { SectionCard } from "./section-card";
+import { SectionSkeleton } from "./section-skeleton";
 import { SourceList } from "./source-list";
+import { useSection } from "./use-section";
+
+const TITLE = "Founders & key people";
 
 function initialsOf(name: string) {
   return name
@@ -11,20 +17,16 @@ function initialsOf(name: string) {
     .join("");
 }
 
-export async function FoundersCard({ slug }: { slug: string }) {
-  let data;
-  try {
-    data = await runFounders(slug);
-  } catch (e) {
-    return (
-      <SectionCard
-        title="Founders & key people"
-        error={e instanceof Error ? e.message : "Unknown error"}
-      />
-    );
-  }
+export function FoundersCard({ slug }: { slug: string }) {
+  const state = useSection<FoundersSection>("founders", slug);
+
+  if (state.status === "loading") return <SectionSkeleton title={TITLE} />;
+  if (state.status === "error")
+    return <SectionCard title={TITLE} error={state.error} />;
+
+  const data = state.data;
   return (
-    <SectionCard title="Founders & key people">
+    <SectionCard title={TITLE}>
       <ul className="divide-y divide-white/[0.06]">
         {data.people.map((p, i) => (
           <li

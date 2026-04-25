@@ -183,6 +183,39 @@ const cachedNews = unstable_cache(
   { revalidate: SECTION_TTL_SECONDS },
 );
 
-export const runWhat = (slug: string) => cachedWhat(slug);
-export const runFounders = (slug: string) => cachedFounders(slug);
-export const runNews = (slug: string) => cachedNews(slug);
+// Dedupe concurrent in-flight calls per (section, slug). unstable_cache
+// memoizes completed results but doesn't share an in-flight promise, so two
+// near-simultaneous requests would each trigger their own Anthropic call.
+const inflight = new Map<string, Promise<unknown>>();
+function dedupe<T>(key: string, fn: () => Promise<T>): Promise<T> {
+  const existing = inflight.get(key) as Promise<T> | undefined;
+  if (existing) return existing;
+  const p = fn().finally(() => inflight.delete(key));
+  inflight.set(key, p);
+  return p;
+}
+
+export const runWhat = (slug: string) =>
+  dedupe(`what:${slug}`, () => cachedWhat(slug));
+export const runFounders = (slug: string) =>
+  dedupe(`founders:${slug}`, () => cachedFounders(slug));
+export const runNews = (slug: string) =>
+  dedupe(`news:${slug}`, () => cachedNews(slug));
+
+export const SECTION_IDS = ["what", "founders", "news"] as const;
+export type SectionId = (typeof SECTION_IDS)[number];
+
+export function isSectionId(value: string): value is SectionId {
+  return (SECTION_IDS as readonly string[]).includes(value);
+}
+
+export function runSectionById(id: SectionId, slug: string) {
+  switch (id) {
+    case "what":
+      return runWhat(slug);
+    case "founders":
+      return runFounders(slug);
+    case "news":
+      return runNews(slug);
+  }
+}
