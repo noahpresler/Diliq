@@ -157,8 +157,7 @@ async function runSection<T>(
   const callOnce = () =>
     anthropic.messages.parse({
     model: MODEL_DEEP,
-    max_tokens: 16000,
-    thinking: { type: "adaptive" },
+    max_tokens: 4000,
     system: [
       {
         type: "text",
@@ -171,7 +170,7 @@ async function runSection<T>(
       {
         type: "web_search_20260209",
         name: "web_search",
-        max_uses: 5,
+        max_uses: 3,
       },
     ],
     messages: [{ role: "user", content: spec.userPrompt(company, today) }],
