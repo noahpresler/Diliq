@@ -11,7 +11,13 @@ const SYSTEM_PROMPT = `You produce a complete pre-meeting investment brief on a 
 
 The reader is a partner at a growth-stage VC firm — sharp, time-constrained, scanning for signal. Be concrete and specific. Avoid buzzwords, marketing fluff, and hedging language. Cite every factual claim with a source URL. Today's date will be in the user message — use it to determine what counts as "recent". Never invent.
 
-Work from your training data only. You have no web access in this turn. For each claim, cite a stable URL you remember (company site, well-known publication). If you cannot confidently recall a fact, omit it — never fabricate. For the news section, only include events you confidently recall from training; if you can't, return an empty items array.
+Use the web_search tool actively for two sections specifically:
+- **founders**: search to confirm the current C-suite, current titles, and LinkedIn URLs. Founders + key leadership change frequently — your training data is often months stale.
+- **news**: you cannot rely on training for last-12-months news. Search for recent funding rounds, exec moves, product launches, customer wins, regulatory events.
+
+For **what** and **competitors**, prefer training data — use search only if you genuinely don't recognize the company or want to verify a recent competitor entry.
+
+Budget your searches: typically 1-2 well-targeted queries cover founders + news together. Never invent a fact you can't cite.
 
 The brief has four sections — produce all four in a single structured output.
 
@@ -74,6 +80,13 @@ async function generateBrief(company: ResolvedCompany): Promise<Brief> {
           },
         ],
         output_config: { format: zodOutputFormat(BriefSchema as never) },
+        tools: [
+          {
+            type: "web_search_20260209",
+            name: "web_search",
+            max_uses: 2,
+          },
+        ],
         messages: [
           {
             role: "user",
@@ -81,7 +94,7 @@ async function generateBrief(company: ResolvedCompany): Promise<Brief> {
           },
         ],
       },
-      { timeout: 90_000 },
+      { timeout: 150_000 },
     );
 
   let response: Awaited<ReturnType<typeof callOnce>> | undefined;
