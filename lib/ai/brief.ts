@@ -1,6 +1,6 @@
 import "server-only";
 import { zodOutputFormat } from "@anthropic-ai/sdk/helpers/zod";
-import { anthropic, MODEL_DEEP } from "./claude";
+import { anthropic, MODEL_FAST } from "./claude";
 import { resolveCompany } from "./resolver";
 import { BriefSchema, type Brief, type ResolvedCompany } from "./schemas";
 import { kvGet, kvSet } from "@/lib/kv";
@@ -64,7 +64,7 @@ async function generateBrief(company: ResolvedCompany): Promise<Brief> {
   const callOnce = () =>
     anthropic.messages.parse(
       {
-        model: MODEL_DEEP,
+        model: MODEL_FAST,
         max_tokens: 5000,
         system: [
           {
