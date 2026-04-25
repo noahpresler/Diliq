@@ -8,9 +8,11 @@ import {
   WhatSchema,
   FoundersSchema,
   NewsSchema,
+  CompetitorsSchema,
   type WhatSection,
   type FoundersSection,
   type NewsSection,
+  type CompetitorsSection,
   type ResolvedCompany,
 } from "./schemas";
 
@@ -69,6 +71,37 @@ For each item (max 8):
 
 Sort newest first. Never invent.`;
 
+const COMPETITORS_SYSTEM = `You map a company's direct competitive landscape for a venture investor's pre-meeting brief.
+
+${VC_PERSONA}
+
+Use web search. Identify the 3–5 most directly competitive companies — same buyer, overlapping product wedge. Skip adjacent or aspirational comps. Order by how directly they compete, most relevant first.
+
+For each competitor:
+- name: canonical name
+- slug: URL-safe lowercase kebab-case (the user can navigate /c/<slug>)
+- domain: primary domain (e.g. 'openai.com'), or null if uncertain
+- tagline: ~10–15 words, concrete one-liner
+- chips: EXACTLY four chips, one per dimension in this order — product, pricing, perception, leadership.
+
+For each chip:
+- dimension: 'product' | 'pricing' | 'perception' | 'leadership'
+- verdict: from the SUBJECT company's perspective vs. THIS competitor.
+  - 'lead'  → subject is meaningfully ahead on this axis
+  - 'lag'   → competitor is meaningfully ahead on this axis
+  - 'equal' → roughly comparable; use when there's no honest edge either way
+- description: ONE sentence with concrete evidence. Reference real features, real prices, named customers, named execs, recognized awards. No hedging buzzwords ('innovative', 'best-in-class').
+
+How to think about each dimension:
+- product: capability, depth, breadth, quality, differentiation, technical moat
+- pricing: list price, packaging, value-for-money, free tier, enterprise contract terms
+- perception: brand strength, analyst/press positioning, developer/customer love, market share narrative
+- leadership: founder/exec calibre, prior wins, recognized depth of bench
+
+Default to 'equal' when you cannot defend a clear lead/lag with a specific fact. Better honest than puffy. Never invent customers, prices, or executives.
+
+Also output marketSummary: 1–2 sentences framing how competition actually plays out (e.g. "incumbents compete on enterprise distribution; new entrants on model quality").`;
+
 interface SectionSpec<T> {
   id: string;
   schema: z.ZodType<T>;
@@ -98,6 +131,14 @@ const NEWS_SPEC: SectionSpec<NewsSection> = {
   systemPrompt: NEWS_SYSTEM,
   userPrompt: (c, today) =>
     `Research recent news (last 12 months) about ${c.name}${c.domain ? ` (${c.domain})` : ""}. Today's date: ${today}.`,
+};
+
+const COMPETITORS_SPEC: SectionSpec<CompetitorsSection> = {
+  id: "competitors",
+  schema: CompetitorsSchema,
+  systemPrompt: COMPETITORS_SYSTEM,
+  userPrompt: (c, today) =>
+    `Identify and compare the 3-5 most direct competitors of ${c.name}${c.domain ? ` (${c.domain})` : ""}. For each, deliver the four-dimension chip comparison from ${c.name}'s perspective. Today's date: ${today}.`,
 };
 
 function isTransient(err: unknown) {
@@ -183,6 +224,16 @@ const cachedNews = unstable_cache(
   { revalidate: SECTION_TTL_SECONDS },
 );
 
+const cachedCompetitors = unstable_cache(
+  async (slug: string) => {
+    const company = await resolveCompany(slug);
+    return runSection(COMPETITORS_SPEC, company);
+  },
+  ["section-competitors"],
+  { revalidate: SECTION_TTL_SECONDS },
+);
+
 export const runWhat = (slug: string) => cachedWhat(slug);
 export const runFounders = (slug: string) => cachedFounders(slug);
 export const runNews = (slug: string) => cachedNews(slug);
+export const runCompetitors = (slug: string) => cachedCompetitors(slug);

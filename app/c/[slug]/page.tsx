@@ -10,6 +10,7 @@ import { friendlyError } from "@/components/brief/section-card";
 import { WhatCard } from "@/components/brief/what-card";
 import { FoundersCard } from "@/components/brief/founders-card";
 import { NewsCard } from "@/components/brief/news-card";
+import { CompetitorsCard } from "@/components/brief/competitors-card";
 
 export async function generateMetadata({
   params,
@@ -106,6 +107,9 @@ export default async function CompanyPage({
         </Suspense>
         <Suspense fallback={<SectionSkeleton title="Recent news" />}>
           <NewsCard slug={company.slug} />
+        </Suspense>
+        <Suspense fallback={<SectionSkeleton title="Competitive landscape" />}>
+          <CompetitorsCard slug={company.slug} />
         </Suspense>
       </section>
 

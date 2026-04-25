@@ -101,3 +101,60 @@ export const NewsSchema = z.object({
   items: z.array(NewsItemSchema).max(8),
 });
 export type NewsSection = z.infer<typeof NewsSchema>;
+
+export const CompareVerdictEnum = z.enum(["lead", "lag", "equal"]);
+export type CompareVerdict = z.infer<typeof CompareVerdictEnum>;
+
+export const CompareDimensionEnum = z.enum([
+  "product",
+  "pricing",
+  "perception",
+  "leadership",
+]);
+export type CompareDimension = z.infer<typeof CompareDimensionEnum>;
+
+export const CompareChipSchema = z.object({
+  dimension: CompareDimensionEnum,
+  verdict: CompareVerdictEnum.describe(
+    "From the SUBJECT company's perspective vs. this competitor: 'lead' = subject is meaningfully ahead, 'lag' = competitor is meaningfully ahead, 'equal' = roughly comparable.",
+  ),
+  description: z
+    .string()
+    .describe(
+      "One specific sentence justifying the verdict. Concrete evidence — features, prices, named customers, named execs. No buzzwords.",
+    ),
+});
+export type CompareChip = z.infer<typeof CompareChipSchema>;
+
+export const CompetitorSchema = z.object({
+  name: z.string().describe("Canonical company name"),
+  slug: z
+    .string()
+    .describe("URL-safe lowercase kebab-case slug, e.g. 'openai'"),
+  domain: z.string().nullable().describe("Primary domain or null"),
+  tagline: z
+    .string()
+    .describe("One-line description, ~10-15 words. Specific, not generic."),
+  chips: z
+    .array(CompareChipSchema)
+    .length(4)
+    .describe(
+      "Exactly four chips, one per dimension: product, pricing, perception, leadership.",
+    ),
+});
+export type Competitor = z.infer<typeof CompetitorSchema>;
+
+export const CompetitorsSchema = z.object({
+  marketSummary: z
+    .string()
+    .describe(
+      "1-2 sentences framing the competitive landscape — who plays, on what axis competition happens.",
+    ),
+  competitors: z
+    .array(CompetitorSchema)
+    .min(3)
+    .max(5)
+    .describe("The 3-5 most relevant direct competitors, most relevant first."),
+  sources: z.array(SourceSchema).max(8),
+});
+export type CompetitorsSection = z.infer<typeof CompetitorsSchema>;
