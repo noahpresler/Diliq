@@ -61,6 +61,13 @@ export const PersonSchema = z.object({
     .describe(
       "Optional standout: a notable exit, recognized award, distinctive credential. Use sparingly. null if nothing stands out.",
     ),
+  linkedinUrl: z
+    .string()
+    .url()
+    .nullable()
+    .describe(
+      "The person's LinkedIn profile URL (e.g. 'https://www.linkedin.com/in/handle'). Only include if you can verify it via search. null if not found or uncertain.",
+    ),
 });
 export type Person = z.infer<typeof PersonSchema>;
 
