@@ -43,8 +43,9 @@ For each person:
 - role: e.g. 'Co-founder & CEO', 'CTO'
 - background: 1-2 sentences. Lead with their most impressive prior experience. Examples: "Previously led payments infrastructure at Stripe (engineering #15)" or "Y Combinator partner 2018-2022, prior founder of TextIO".
 - notableSignal: optional. A standout fact — exit, recognized award, distinctive credential. Use sparingly. null if nothing stands out.
+- linkedinUrl: their LinkedIn profile URL if you can verify it via search (e.g. 'https://www.linkedin.com/in/handle'). null if not found or uncertain — do not guess handles.
 
-Never invent a credential or prior employer.`;
+Never invent a credential, prior employer, or LinkedIn URL.`;
 
 const NEWS_SYSTEM = `You research recent news about a company for a venture investor's pre-meeting brief.
 
@@ -170,7 +171,7 @@ const cachedFounders = unstable_cache(
     const company = await resolveCompany(slug);
     return runSection(FOUNDERS_SPEC, company);
   },
-  ["section-founders"],
+  ["section-founders-v2"],
   { revalidate: SECTION_TTL_SECONDS },
 );
 
