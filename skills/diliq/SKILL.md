@@ -1,6 +1,6 @@
 ---
 name: diliq
-description: Generate a pre-meeting VC investment brief on a single company, rendered as an interactive React artifact in the Diliq design language. Use when the user asks for a brief, deep-dive, due-diligence summary, company research, or pre-meeting prep on a named company (e.g. "brief me on Anthropic", "/diliq Stripe", "what should I know before meeting Mercury", "research Brex for me"). Produces a single-file React component with up to eight sections — optional red flags banner, what they do, founders & key people, recent news, competitive landscape, market opportunity (TAM with sensitivity table), investment thesis (bull / bear / risks), diligence priorities — styled with Tailwind in a dark, glowy aesthetic with cursor-tracking glow, staggered entry animations, and a live "as of" pulse. Best for VC partners, investors, BD, or anyone preparing for a high-stakes meeting with a company.
+description: Generate a pre-meeting VC investment brief on a single company, rendered as an interactive React artifact in the Diliq design language. Use when the user asks for a brief, deep-dive, due-diligence summary, company research, or pre-meeting prep on a named company (e.g. "brief me on Anthropic", "/diliq Stripe", "what should I know before meeting Mercury", "research Brex for me"). Produces a single-file React component with up to nine sections — optional red flags banner, core thesis (the 2-3 sentence why-we-invested), what they do, founders & key people, recent news, competitive landscape, market opportunity (TAM with sensitivity table), investment thesis (bull / bear / risks), diligence priorities — styled with Tailwind in a dark, glowy aesthetic with cursor-tracking glow, staggered entry animations, and a live "as of" pulse. Best for VC partners, investors, BD, or anyone preparing for a high-stakes meeting with a company.
 ---
 
 ## Self-update (run once at the start of every conversation, before responding)
@@ -78,6 +78,7 @@ import {
   Search,
   Flag,
   Target,
+  Sparkles,
 } from "lucide-react";
 
 const BRIEF = {
@@ -94,6 +95,11 @@ const BRIEF = {
   redFlags: [
     // { title: "DOJ inquiry opened Feb 2026", description: "1-2 sentence factual summary with source." },
   ],
+  // 2-3 sentences. The reasoned, concise thesis a partner would actually
+  // state at a Monday meeting for why they would invest. Specific, opinionated,
+  // and grounded in what you researched. Not a tagline — a bet.
+  coreThesis:
+    "2-3 sentences a partner would say to explain why they invested. Concrete, opinionated, defensible.",
   what: {
     tagline: "10-15 words; concrete; what they ARE not what they 'enable'",
     summary: "2-3 sentences expanding the tagline — problem, customer, why it matters.",
@@ -390,7 +396,7 @@ function BulletList({ items, accentColor, Icon }) {
 // ============================================================================
 
 export default function Brief() {
-  const { company, redFlags, what, founders, news, competitors, tam, thesis, diligence } = BRIEF;
+  const { company, redFlags, coreThesis, what, founders, news, competitors, tam, thesis, diligence } = BRIEF;
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-black px-6 py-10 text-white antialiased">
@@ -486,8 +492,37 @@ export default function Brief() {
             </FadeUp>
           )}
 
+          {/* Core thesis — the punchy 2-3 sentence why-we-invested */}
+          {coreThesis && (
+            <FadeUp delay={80}>
+              <div className="relative overflow-hidden rounded-2xl border border-white/[0.10] bg-gradient-to-br from-violet-500/[0.06] via-white/[0.02] to-cyan-500/[0.06] p-7 sm:p-9 backdrop-blur">
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute -inset-x-12 -top-24 h-48 opacity-60 blur-3xl"
+                  style={{
+                    background:
+                      "radial-gradient(ellipse 60% 80% at 50% 0%, rgba(139,92,246,0.20), rgba(34,211,238,0.10) 60%, transparent 80%)",
+                  }}
+                />
+                <div
+                  aria-hidden
+                  className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"
+                />
+                <div className="relative">
+                  <div className="flex items-center gap-2 text-white/55">
+                    <Sparkles className="h-3.5 w-3.5 text-violet-300" />
+                    <p className="text-[11px] font-medium uppercase tracking-[0.2em]">Core thesis</p>
+                  </div>
+                  <p className="mt-5 bg-gradient-to-br from-white via-white to-white/65 bg-clip-text text-2xl font-medium leading-snug tracking-tight text-transparent sm:text-3xl">
+                    {coreThesis}
+                  </p>
+                </div>
+              </div>
+            </FadeUp>
+          )}
+
           {/* What */}
-          <GlowCard title="What they do" delay={80}>
+          <GlowCard title="What they do" delay={140}>
             <p className="text-2xl font-medium leading-snug tracking-tight text-white">{what.tagline}</p>
             <p className="mt-5 text-base leading-relaxed text-white/80">{what.summary}</p>
             <p className="mt-4 text-sm leading-relaxed text-white/65">{what.howItWorks}</p>
@@ -495,7 +530,7 @@ export default function Brief() {
           </GlowCard>
 
           {/* Founders */}
-          <GlowCard title="Founders & key people" delay={160}>
+          <GlowCard title="Founders & key people" delay={220}>
             <ul className="divide-y divide-white/[0.06]">
               {founders.map((p, i) => (
                 <li key={i} className="grid grid-cols-1 gap-x-6 gap-y-3 py-5 first:pt-0 last:pb-0 sm:grid-cols-[minmax(220px,1fr)_2fr]">
@@ -532,7 +567,7 @@ export default function Brief() {
           </GlowCard>
 
           {/* News */}
-          <GlowCard title="Recent news" delay={240}>
+          <GlowCard title="Recent news" delay={300}>
             {news.length === 0 ? (
               <p className="text-sm text-white/55">No notable news found in the last 12 months.</p>
             ) : (
@@ -560,7 +595,7 @@ export default function Brief() {
           </GlowCard>
 
           {/* Competitors */}
-          <GlowCard title="Competitive landscape" delay={320}>
+          <GlowCard title="Competitive landscape" delay={380}>
             <p className="text-sm leading-relaxed text-white/70">{competitors.marketSummary}</p>
             <ul className="mt-6 space-y-4">
               {competitors.list.map((c, i) => (
@@ -594,7 +629,7 @@ export default function Brief() {
           </GlowCard>
 
           {/* Market opportunity (TAM) */}
-          <GlowCard title="Market opportunity" delay={400}>
+          <GlowCard title="Market opportunity" delay={460}>
             <div className="flex flex-wrap items-baseline justify-between gap-4">
               <div>
                 <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-white/40">Headline TAM</p>
@@ -706,7 +741,7 @@ export default function Brief() {
           </GlowCard>
 
           {/* Investment thesis: bull / bear / risks */}
-          <GlowCard title="Investment thesis" delay={480}>
+          <GlowCard title="Investment thesis" delay={540}>
             <div className="grid gap-5 sm:grid-cols-2">
               <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.03] p-5">
                 <div className="flex items-center gap-2 text-emerald-200">
@@ -740,7 +775,7 @@ export default function Brief() {
           </GlowCard>
 
           {/* Diligence priorities */}
-          <GlowCard title="Diligence priorities" accent="#22d3ee" delay={560}>
+          <GlowCard title="Diligence priorities" accent="#22d3ee" delay={620}>
             <p className="text-sm leading-relaxed text-white/65">
               Areas worth hardening before a term sheet — what to ask the team and which data to request.
             </p>
@@ -787,6 +822,7 @@ Replace `BRIEF` with the real researched data. Specifically:
 
 - `company.name` / `company.domain` / `company.asOf` (today YYYY-MM-DD) / `company.note` (1-line disambiguation if needed; null otherwise)
 - `redFlags[]` — **leave as `[]` unless there are MAJOR red flags worth raising before the meeting.** Threshold: active litigation, regulatory action, fraud allegations, key-founder departure mid-round, material customer loss, security incident, accounting concerns. Routine "competitive pressure" or "high burn" do NOT qualify — those belong in the bear case. Each entry: `{ title, description }`. If there is anything here, it renders FIRST so the partner sees it before anything else.
+- `coreThesis` — **2–3 sentences, no more.** Write it as if a partner is closing the Monday meeting and saying out loud the reasoned bet that justifies leading this round. Specific. Opinionated. Defensible. No hedge words. Reference the wedge, the why-now, and what compounds — the things that would make this a 10x outcome, in plain language. This is the one piece of writing in the brief that captures the *bet*; the rest is supporting evidence. If the company is genuinely uninvestable, set this to a one-sentence "Pass — [reason]" rather than dressing it up.
 - `what.{tagline, summary, howItWorks, sources}` per the persona section above (max 8 sources)
 - `founders[]` — 1–6 people. `notableSignal` and `linkedinUrl` are nullable. Don't guess LinkedIn handles.
 - `news[]` — max 8, newest first, prioritized funding > exec > launches > customer > regulatory. Skip PR fluff. Categories: 'funding' | 'product' | 'people' | 'press' | 'other'.
@@ -807,7 +843,8 @@ If a section legitimately has nothing — early-stage company, no public news �
 
 - **Never invent**: a credential, prior employer, funding number, customer name, LinkedIn URL, competitor, or specific metric.
 - If uncertain about a fact, omit it. If sources disagree, surface the disagreement in one line.
-- For thesis content (bull / bear / risks / diligence): synthesize from the facts you gathered. Be opinionated but grounded — every claim should trace back to something you searched. No "could" / "might" / "potentially" hedge-words; if it's speculative, say so explicitly with "speculative:" prefix.
+- For thesis content (core thesis / bull / bear / risks / diligence): synthesize from the facts you gathered. Be opinionated but grounded — every claim should trace back to something you searched. No "could" / "might" / "potentially" hedge-words; if it's speculative, say so explicitly with "speculative:" prefix.
+- The **core thesis** is the most important paragraph in the brief. Spend disproportionate care on it. It should pass the "would a partner actually say this in a meeting?" test — concrete, opinionated, defensible. Vague generic theses ("they're well-positioned to capture a large market") are a fail.
 - For TAM: build bottom-up. Show your work in `tam.analysis`. Cite buyer-count sources (industry counts, employee thresholds, IRS / Census / Statista numbers). The headline range should bracket reasonable enterprise + mid-market combinations — not a single point estimate. If credible top-down sources exist, use them as a sanity check on the bottom-up, not as the headline number.
 - For red flags: the bar is HIGH. Active litigation, regulatory action, fraud allegations, key-person departure mid-round, material customer churn, security incident, accounting irregularities. Routine bad news (missed quarter, layoff round, competitive loss) belongs in `news` or `bearCase`, NOT `redFlags`. Default to empty array.
 - Date-stamp via `company.asOf`.
