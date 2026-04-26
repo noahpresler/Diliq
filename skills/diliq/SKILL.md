@@ -5,7 +5,21 @@ description: Generate a pre-meeting VC investment brief on a single company, ren
 
 # Diliq — VC Pre-Meeting Brief (Interactive)
 
-You produce a pre-meeting investment brief on a single company for a partner at a growth-stage venture firm. The output is a **React component artifact** rendered live in the Claude side panel, not markdown.
+You produce a pre-meeting investment brief on a single company for a partner at a growth-stage venture firm.
+
+## Output rules — read this first
+
+**Always create an artifact.** Use the artifact creation capability available to you in this conversation. Do **not** dump JSX, markdown, or code blocks directly into the chat response. The chat reply should be a one-line confirmation pointing at the artifact ("Brief on [Company] — open the artifact in the side panel."), with all the content living inside the artifact itself.
+
+**Artifact type, in order of preference:**
+
+1. **React** — `application/vnd.ant.react`. This is the intended output and what the embedded skeleton in this skill is written for.
+2. **HTML** — `text/html`. If the workspace doesn't support React artifacts (some Claude for Work / Enterprise tenants disable the type), wrap the same JSX into a single self-contained `<!doctype html>` page that loads React + Tailwind from CDN. Same look, same data, same tab behavior.
+3. **Markdown** — `text/markdown`. Last-resort fallback. Use only if both React and HTML artifacts fail. Same six-section structure described in the markdown fallback at the bottom of this file.
+
+**Never emit JSX or large code blocks as plain text in the chat.** If for any reason artifacts can't be created at all in this environment, fall through to the markdown fallback (which is *prose*, not code) and tell the user once: "Artifacts aren't enabled in your workspace, so I produced the brief as a markdown document instead."
+
+The output is a **React component artifact** rendered live in the Claude side panel.
 
 ## Persona
 
@@ -24,7 +38,7 @@ The reader is sharp, time-constrained, scanning for signal. Be concrete and spec
 
 3. **Synthesize the thesis.** After research, form your own bull case, bear case, key risks, and the highest-leverage diligence questions. Don't copy talking points — write the partner's-eye view.
 
-4. **Produce a single React component artifact** (`type: application/vnd.ant.react`) with the data embedded inline. No external fetches. No file imports beyond `react` and `lucide-react`.
+4. **Create the artifact** using the artifact tool / capability available in this conversation. Default: a single React component (`type: application/vnd.ant.react`) with the data embedded inline. No external fetches. No file imports beyond `react` and `lucide-react`. If React artifacts aren't supported in this workspace, see the type-fallback ladder under "Output rules" above.
 
 ## Output: the React artifact
 
@@ -1228,6 +1242,138 @@ Reply in chat with a 1-paragraph summary of the most important shift the new dat
 
 If the user names a *new* company in a follow-up ("now do Mercury"), produce a fresh full artifact (with `diligenceInsights: null`).
 
-## Fallback
+## Fallbacks when React artifacts aren't available
 
-If for any reason React artifacts aren't supported in the current Claude environment, fall back to producing the brief as inline markdown using the same six-section structure and the same content guidelines. Tell the user once that the rich artifact wasn't available so they know what they're missing.
+Some Claude for Work / Enterprise workspaces disable React artifacts or all artifacts entirely. Detect this by attempting the artifact creation; if you receive an error or know from environment cues that the artifact tool isn't available, walk down this ladder:
+
+### Tier 1 — HTML artifact (`text/html`)
+
+Create a single self-contained HTML page that delivers the same brief. Load React, ReactDOM, Tailwind, and Babel from CDN, and inline the same JSX as a `<script type="text/babel">` block. The visual result is identical to the React artifact. Skeleton:
+
+```html
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>[Company] — Pre-Meeting Brief</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>body{margin:0;background:#000}</style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="text/babel" data-presets="react">
+      const { useState, useRef } = React;
+      // Inline the SAME BRIEF object, helpers, and components from the React skeleton above.
+      // Replace the lucide-react icons with inline <svg> equivalents (or use a single
+      // <Icon name="..." /> wrapper) since you can't import lucide-react in a CDN setup.
+      // ReactDOM.createRoot(document.getElementById("root")).render(<Brief />);
+    </script>
+  </body>
+</html>
+```
+
+Same data shape, same look. The only adjustment is icons: replace `lucide-react` imports with inline SVG paths or a tiny `<Icon>` helper that renders one of the icons inline.
+
+### Tier 2 — Markdown artifact (`text/markdown`)
+
+If even HTML artifacts are blocked, create a markdown artifact with the brief as prose. Section structure:
+
+```markdown
+# [Company Name] — Pre-Meeting Brief
+_as of YYYY-MM-DD_
+
+> [Optional 1-line disambiguation note if needed]
+
+## ⚠ Red flags
+[Only if there are MAJOR flags — same threshold as the React skeleton. Skip section entirely if none.]
+- **[Title]** — [description]
+
+## Core thesis
+[2-3 sentence reasoned bet a partner would say in a Monday meeting]
+
+## What they do
+**Tagline:** [10-15 words]
+
+[2-3 sentence summary]
+
+[1-2 paragraph how-it-works]
+
+_Sources: [name](url), [name](url)_
+
+## Founders & key people
+- **[Name]** — [Role] — [LinkedIn](url)
+  [Background]
+  _Notable: [signal]_
+
+## Recent news
+[Date] · [funding/product/people/press/other] · [Source]
+**[[Title]](url)**
+[1-2 sentence takeaway]
+
+## Thought leadership
+**[Author], [Role]** · [Source] · [Date]
+[[Title]](url)
+[1-2 sentence summary]
+
+## Competitive landscape
+[Market summary]
+
+### [Competitor name] · [domain]
+[Tagline]
+
+| Dimension | Verdict | Evidence |
+|---|---|---|
+| Product | Lead/Lag/Equal | [evidence] |
+| Pricing | Lead/Lag/Equal | [evidence] |
+| Perception | Lead/Lag/Equal | [evidence] |
+| Leadership | Lead/Lag/Equal | [evidence] |
+
+## Market opportunity
+**Headline TAM:** $X – $Y (bottom-up)
+
+[1-2 paragraph analysis]
+
+| Segment | Avg ACV | Buyers | Implied TAM |
+|---|---|---|---|
+| Enterprise | $X | N | $Y |
+| Mid-market | $X | N | $Y |
+
+**Sensitivity (TAM = ACV × buyers):**
+
+| ACV \ Buyers | N1 | N2 | N3 | N4 | N5 |
+|---|---|---|---|---|---|
+| $A1 | … | … | … | … | … |
+| $A2 | … | … | … | … | … |
+[etc — 5 ACV rows × 5 buyer columns]
+
+## Investment thesis
+
+**Bull case:**
+- …
+
+**Bear case:**
+- …
+
+**Key risks:**
+- …
+
+## Diligence priorities
+1. **[Area]** — [why it matters]
+   - Ask: [specific question]
+   - Ask: [specific question]
+[etc, 4-6 entries]
+
+---
+**Diligence Insights**
+_Share key diligence artifacts and data with Claude to activate this section._
+```
+
+When the user later shares diligence artifacts, regenerate the markdown artifact and append a populated **Diligence Insights** section with the same structure as the React tab (synthesis, key takeaways, updated flags, updated bull/bear/risks, updated questions, what we still don't know).
+
+### Tier 3 — Hard refusal
+
+If no artifact tool of any kind is available (extremely rare), tell the user once: "Artifacts aren't enabled in your workspace, so I'll produce the brief inline." Then output the markdown brief directly in the chat. **Never output the React JSX as inline code in chat — that's the worst-of-all-worlds outcome.**
