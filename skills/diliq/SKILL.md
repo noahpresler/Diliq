@@ -1,6 +1,6 @@
 ---
 name: diliq
-description: Generate a pre-meeting VC investment brief on a single company, rendered as an interactive React artifact in the Diliq design language. Use when the user asks for a brief, deep-dive, due-diligence summary, company research, or pre-meeting prep on a named company (e.g. "brief me on Anthropic", "/diliq Stripe", "what should I know before meeting Mercury", "research Brex for me"). Produces a single-file React component with up to nine sections — optional red flags banner, core thesis (the 2-3 sentence why-we-invested), what they do, founders & key people, recent news, competitive landscape, market opportunity (TAM with sensitivity table), investment thesis (bull / bear / risks), diligence priorities — styled with Tailwind in a dark, glowy aesthetic with cursor-tracking glow, staggered entry animations, and a live "as of" pulse. Best for VC partners, investors, BD, or anyone preparing for a high-stakes meeting with a company.
+description: Generate a pre-meeting VC investment brief on a single company, rendered as an interactive React artifact in the Diliq design language. Use when the user asks for a brief, deep-dive, due-diligence summary, company research, or pre-meeting prep on a named company (e.g. "brief me on Anthropic", "/diliq Stripe", "what should I know before meeting Mercury", "research Brex for me"). Produces a single-file React component with two tabs — "Company Overview" (red flags, core thesis, what they do, founders, news, thought leadership, competitive landscape, market opportunity, investment thesis, diligence priorities) and "Diligence Insights" (initially empty; populates when the user shares diligence artifacts like decks, spreadsheets, or memos with takeaways, updated questions, updated flags, updated bull/bear/risks). Styled with Tailwind in a dark, glowy aesthetic with cursor-tracking glow, staggered entry animations, and a live "as of" pulse. Best for VC partners, investors, BD, or anyone preparing for a high-stakes meeting with a company.
 ---
 
 # Diliq — VC Pre-Meeting Brief (Interactive)
@@ -63,6 +63,10 @@ import {
   Flag,
   Target,
   Sparkles,
+  Lightbulb,
+  FileText,
+  Layers,
+  Quote,
 } from "lucide-react";
 
 const BRIEF = {
@@ -107,6 +111,21 @@ const BRIEF = {
       source: "TechCrunch",
       date: "2026-03-12",
       category: "funding", // 'funding' | 'product' | 'people' | 'press' | 'other'
+    },
+  ],
+  // 3-4 recent thought leadership pieces from bona fide industry voices —
+  // founders, investors, or named operators in the space. Skip mainstream
+  // press and analyst reports; the bar is "this person actually moves
+  // opinion in this market." Keep summaries punchy.
+  thoughtLeadership: [
+    {
+      title: "Title of the essay / podcast / talk",
+      summary: "1-2 sentence summary of the core argument or insight.",
+      author: "Author name",
+      role: "Their role/affiliation, e.g. 'Founder, Stripe' or 'Partner, Sequoia'",
+      source: "Stratechery / Substack / Lenny's Newsletter / a16z / ... ",
+      url: "https://...",
+      date: "2026-02-20",
     },
   ],
   competitors: {
@@ -179,6 +198,22 @@ const BRIEF = {
       },
     ],
   },
+  // Tab B content. STARTS AS null. Populated only after the user shares
+  // diligence artifacts (deck, financial model, customer references,
+  // investor memo, etc.) and Claude re-emits the artifact.
+  diligenceInsights: null,
+  // When populated, the shape is:
+  // diligenceInsights: {
+  //   artifactsAnalyzed: ["Series B deck (PDF)", "Financial model (XLSX)", ...],
+  //   summary: "1-2 paragraph eloquent synthesis of what the new info changes about our view.",
+  //   keyTakeaways: ["bullet 1", "bullet 2", ...],
+  //   updatedQuestions: [{ area, why, asks: [string] }, ...],
+  //   updatedFlags: [{ title, description }, ...],          // any new red flags surfaced
+  //   updatedBullCase: ["bullet 1", "..."],                 // refined bull case in light of new data
+  //   updatedBearCase: ["bullet 1", "..."],                 // refined bear case
+  //   updatedKeyRisks: ["bullet 1", "..."],                 // refined risks
+  //   stillNeed: ["thing 1", "thing 2", ...],                // gaps the new artifacts didn't fill
+  // }
 };
 
 // ============================================================================
@@ -406,8 +441,245 @@ function BulletList({ items, accentColor, Icon }) {
 // Main component
 // ============================================================================
 
+function TabBar({ active, onChange, hasInsights }) {
+  const tabs = [
+    { id: "overview", label: "Company Overview", Icon: Layers },
+    { id: "diligence", label: "Diligence Insights", Icon: FileText },
+  ];
+  return (
+    <div className="mt-8 inline-flex items-center gap-1 rounded-full border border-white/[0.08] bg-white/[0.02] p-1 backdrop-blur">
+      {tabs.map(({ id, label, Icon }) => {
+        const isActive = active === id;
+        const showDot = id === "diligence" && hasInsights && !isActive;
+        return (
+          <button
+            key={id}
+            type="button"
+            onClick={() => onChange(id)}
+            className={`relative inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium tracking-wide transition-all duration-300 ${
+              isActive
+                ? "bg-gradient-to-r from-violet-500/25 to-cyan-400/20 text-white shadow-[0_0_20px_rgba(139,92,246,0.18)] ring-1 ring-inset ring-white/15"
+                : "text-white/55 hover:text-white/85"
+            }`}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            <span>{label}</span>
+            {showDot && (
+              <span className="ml-0.5 inline-flex h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgb(34,211,238)]" />
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function DiligenceEmptyState() {
+  return (
+    <FadeUp delay={80}>
+      <div className="relative overflow-hidden rounded-2xl border border-dashed border-white/[0.10] bg-white/[0.015] p-12 text-center backdrop-blur">
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -inset-x-12 -top-24 h-48 opacity-40 blur-3xl"
+          style={{
+            background:
+              "radial-gradient(ellipse 60% 80% at 50% 0%, rgba(34,211,238,0.18), transparent 70%)",
+          }}
+        />
+        <div className="relative">
+          <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
+            <FileText className="h-5 w-5 text-cyan-300/80" />
+          </div>
+          <p className="mt-5 text-base font-medium text-white/85">
+            Share key diligence artifacts and data with Claude to activate this tab.
+          </p>
+          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-white/55">
+            Drop in the data room deck, financial model, customer references,
+            cohort data, investor memo — anything you'd review before a term
+            sheet. Claude reads it, then refreshes this tab with takeaways,
+            updated questions, flags, and a refined thesis.
+          </p>
+        </div>
+      </div>
+    </FadeUp>
+  );
+}
+
+function DiligenceInsightsContent({ insights }) {
+  return (
+    <>
+      {insights.artifactsAnalyzed?.length > 0 && (
+        <FadeUp delay={40}>
+          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5 backdrop-blur">
+            <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-white/40">Artifacts analyzed</p>
+            <ul className="mt-3 flex flex-wrap gap-2">
+              {insights.artifactsAnalyzed.map((a, i) => (
+                <li
+                  key={i}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-xs text-white/70"
+                >
+                  <FileText className="h-3 w-3 text-cyan-300/80" />
+                  {a}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </FadeUp>
+      )}
+
+      {insights.summary && (
+        <FadeUp delay={100}>
+          <div className="relative overflow-hidden rounded-2xl border border-white/[0.10] bg-gradient-to-br from-cyan-500/[0.05] via-white/[0.02] to-violet-500/[0.05] p-7 backdrop-blur">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -inset-x-12 -top-24 h-48 opacity-50 blur-3xl"
+              style={{
+                background:
+                  "radial-gradient(ellipse 60% 80% at 50% 0%, rgba(34,211,238,0.18), rgba(139,92,246,0.10) 60%, transparent 80%)",
+              }}
+            />
+            <div className="relative">
+              <div className="flex items-center gap-2 text-cyan-200">
+                <Quote className="h-3.5 w-3.5" />
+                <p className="text-[11px] font-medium uppercase tracking-[0.2em]">Synthesis</p>
+              </div>
+              <p className="mt-4 text-base leading-relaxed text-white/85">{insights.summary}</p>
+            </div>
+          </div>
+        </FadeUp>
+      )}
+
+      {insights.keyTakeaways?.length > 0 && (
+        <GlowCard title="Key takeaways" delay={160}>
+          <BulletList items={insights.keyTakeaways} accentColor="rgb(167,139,250)" Icon={Sparkles} />
+        </GlowCard>
+      )}
+
+      {insights.updatedFlags?.length > 0 && (
+        <FadeUp delay={220}>
+          <div className="relative overflow-hidden rounded-2xl border border-rose-500/30 bg-gradient-to-br from-rose-950/60 via-rose-900/30 to-rose-950/60 p-6 sm:p-7 backdrop-blur">
+            <div
+              aria-hidden
+              className="pointer-events-none absolute -inset-x-12 -top-24 h-48 opacity-50 blur-3xl"
+              style={{
+                background:
+                  "radial-gradient(ellipse 60% 80% at 50% 0%, rgba(244,63,94,0.30), transparent 70%)",
+              }}
+            />
+            <div className="relative">
+              <div className="flex items-center gap-2 text-rose-200">
+                <Flag className="h-4 w-4" />
+                <p className="text-[11px] font-medium uppercase tracking-[0.2em]">New flags from data</p>
+              </div>
+              <ul className="mt-5 space-y-4">
+                {insights.updatedFlags.map((rf, i) => (
+                  <li key={i} className="flex gap-3">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-300" />
+                    <div className="min-w-0">
+                      <p className="text-base font-medium text-rose-50">{rf.title}</p>
+                      <p className="mt-1 text-sm leading-relaxed text-rose-100/75">{rf.description}</p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </div>
+        </FadeUp>
+      )}
+
+      {(insights.updatedBullCase?.length > 0 ||
+        insights.updatedBearCase?.length > 0 ||
+        insights.updatedKeyRisks?.length > 0) && (
+        <GlowCard title="Updated thesis" delay={280}>
+          <p className="text-xs text-white/45">
+            Refined in light of the new artifacts. Where the original brief and the data conflict, this view trusts the data.
+          </p>
+          {(insights.updatedBullCase?.length > 0 || insights.updatedBearCase?.length > 0) && (
+            <div className="mt-5 grid gap-5 sm:grid-cols-2">
+              {insights.updatedBullCase?.length > 0 && (
+                <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.03] p-5">
+                  <div className="flex items-center gap-2 text-emerald-200">
+                    <TrendingUp className="h-4 w-4" />
+                    <p className="text-[11px] font-medium uppercase tracking-[0.2em]">Bull case</p>
+                  </div>
+                  <div className="mt-4">
+                    <BulletList items={insights.updatedBullCase} accentColor="rgb(110,231,183)" Icon={ArrowUpRight} />
+                  </div>
+                </div>
+              )}
+              {insights.updatedBearCase?.length > 0 && (
+                <div className="rounded-xl border border-rose-400/15 bg-rose-400/[0.03] p-5">
+                  <div className="flex items-center gap-2 text-rose-200">
+                    <TrendingDown className="h-4 w-4" />
+                    <p className="text-[11px] font-medium uppercase tracking-[0.2em]">Bear case</p>
+                  </div>
+                  <div className="mt-4">
+                    <BulletList items={insights.updatedBearCase} accentColor="rgb(251,113,133)" Icon={ArrowDownRight} />
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+          {insights.updatedKeyRisks?.length > 0 && (
+            <div className="mt-5 rounded-xl border border-amber-300/15 bg-amber-300/[0.03] p-5">
+              <div className="flex items-center gap-2 text-amber-200">
+                <AlertTriangle className="h-4 w-4" />
+                <p className="text-[11px] font-medium uppercase tracking-[0.2em]">Key risks</p>
+              </div>
+              <div className="mt-4">
+                <BulletList items={insights.updatedKeyRisks} accentColor="rgb(252,211,77)" Icon={AlertTriangle} />
+              </div>
+            </div>
+          )}
+        </GlowCard>
+      )}
+
+      {insights.updatedQuestions?.length > 0 && (
+        <GlowCard title="Updated diligence questions" accent="#22d3ee" delay={340}>
+          <p className="text-sm leading-relaxed text-white/65">
+            Refined questions for the team given what the new artifacts revealed and what they didn't.
+          </p>
+          <ul className="mt-5 space-y-4">
+            {insights.updatedQuestions.map((d, i) => (
+              <li key={i} className="rounded-xl border border-white/[0.07] bg-white/[0.015] p-5">
+                <div className="flex items-start gap-3">
+                  <span className="mt-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-400/[0.12] text-[11px] font-medium text-cyan-200">
+                    {i + 1}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-base font-medium text-white">{d.area}</p>
+                    <p className="mt-1 text-sm leading-relaxed text-white/65">{d.why}</p>
+                    {d.asks?.length > 0 && (
+                      <ul className="mt-3 space-y-1.5">
+                        {d.asks.map((q, j) => (
+                          <li key={j} className="flex gap-2 text-sm text-white/75">
+                            <Search className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-300/70" />
+                            <span>{q}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </GlowCard>
+      )}
+
+      {insights.stillNeed?.length > 0 && (
+        <GlowCard title="What we still don't know" delay={400}>
+          <BulletList items={insights.stillNeed} accentColor="rgb(148,163,184)" Icon={Search} />
+        </GlowCard>
+      )}
+    </>
+  );
+}
+
 export default function Brief() {
-  const { company, redFlags, coreThesis, what, founders, news, competitors, tam, thesis, diligence } = BRIEF;
+  const { company, redFlags, coreThesis, what, founders, news, thoughtLeadership, competitors, tam, thesis, diligence, diligenceInsights } = BRIEF;
+  const [activeTab, setActiveTab] = useState("overview");
+  const hasInsights = !!diligenceInsights && Object.keys(diligenceInsights).length > 0;
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-black px-6 py-10 text-white antialiased">
@@ -465,7 +737,18 @@ export default function Brief() {
           </header>
         </FadeUp>
 
-        <section className="mt-10 grid gap-5">
+        <TabBar active={activeTab} onChange={setActiveTab} hasInsights={hasInsights} />
+
+        <section key={activeTab} className="mt-7 grid gap-5">
+          {activeTab === "diligence" && (
+            hasInsights ? (
+              <DiligenceInsightsContent insights={diligenceInsights} />
+            ) : (
+              <DiligenceEmptyState />
+            )
+          )}
+          {activeTab === "overview" && (<>
+
           {/* Red flags — only renders if MAJOR flags present */}
           {redFlags && redFlags.length > 0 && (
             <FadeUp delay={40}>
@@ -605,8 +888,44 @@ export default function Brief() {
             )}
           </GlowCard>
 
+          {/* Thought leadership */}
+          {thoughtLeadership && thoughtLeadership.length > 0 && (
+            <GlowCard title="Thought leadership" delay={360}>
+              <p className="text-sm leading-relaxed text-white/65">
+                Recent pieces from operators and investors shaping how the market thinks about this space.
+              </p>
+              <ul className="mt-5 -mx-2 divide-y divide-white/[0.06]">
+                {thoughtLeadership.map((p, i) => (
+                  <li key={i} className="rounded-lg px-2 py-4 transition-colors first:pt-0 last:pb-0 hover:bg-white/[0.015]">
+                    <div className="flex flex-wrap items-center gap-2 text-xs text-white/55">
+                      <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-300/25 bg-violet-300/[0.06] px-2.5 py-0.5 text-[11px] text-violet-100/95">
+                        <Lightbulb className="h-3 w-3 text-violet-200" />
+                        {p.author}
+                      </span>
+                      <span className="text-white/40">{p.role}</span>
+                      <span className="text-white/25">·</span>
+                      <span className="text-white/45">{p.source}</span>
+                      <span className="text-white/25">·</span>
+                      <span className="tabular-nums text-white/45">{fmtDate(p.date)}</span>
+                    </div>
+                    <a
+                      href={p.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-flex items-start gap-1.5 text-base font-medium leading-snug text-white transition hover:text-white/85"
+                    >
+                      {p.title}
+                      <ExternalLink className="mt-1 h-3.5 w-3.5 shrink-0 opacity-40" />
+                    </a>
+                    <p className="mt-1.5 text-sm leading-relaxed text-white/70">{p.summary}</p>
+                  </li>
+                ))}
+              </ul>
+            </GlowCard>
+          )}
+
           {/* Competitors */}
-          <GlowCard title="Competitive landscape" delay={380}>
+          <GlowCard title="Competitive landscape" delay={420}>
             <p className="text-sm leading-relaxed text-white/70">{competitors.marketSummary}</p>
             <ul className="mt-6 space-y-4">
               {competitors.list.map((c, i) => (
@@ -643,7 +962,7 @@ export default function Brief() {
           </GlowCard>
 
           {/* Market opportunity (TAM) */}
-          <GlowCard title="Market opportunity" delay={460}>
+          <GlowCard title="Market opportunity" delay={500}>
             <div className="flex flex-wrap items-baseline justify-between gap-4">
               <div>
                 <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-white/40">Headline TAM</p>
@@ -755,7 +1074,7 @@ export default function Brief() {
           </GlowCard>
 
           {/* Investment thesis: bull / bear / risks */}
-          <GlowCard title="Investment thesis" delay={540}>
+          <GlowCard title="Investment thesis" delay={580}>
             <div className="grid gap-5 sm:grid-cols-2">
               <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.03] p-5">
                 <div className="flex items-center gap-2 text-emerald-200">
@@ -789,7 +1108,7 @@ export default function Brief() {
           </GlowCard>
 
           {/* Diligence priorities */}
-          <GlowCard title="Diligence priorities" accent="#22d3ee" delay={620}>
+          <GlowCard title="Diligence priorities" accent="#22d3ee" delay={660}>
             <p className="text-sm leading-relaxed text-white/65">
               Areas worth hardening before a term sheet — what to ask the team and which data to request.
             </p>
@@ -819,6 +1138,7 @@ export default function Brief() {
               ))}
             </ul>
           </GlowCard>
+          </>)}
         </section>
 
         <footer className="mt-16 border-t border-white/[0.06] pt-6 text-center text-xs text-white/30">
@@ -840,6 +1160,7 @@ Replace `BRIEF` with the real researched data. Specifically:
 - `what.{tagline, summary, howItWorks, sources}` per the persona section above (max 8 sources)
 - `founders[]` — 1–6 people. `notableSignal` and `linkedinUrl` are nullable. Don't guess LinkedIn handles.
 - `news[]` — max 8, newest first, prioritized funding > exec > launches > customer > regulatory. Skip PR fluff. Categories: 'funding' | 'product' | 'people' | 'press' | 'other'.
+- `thoughtLeadership[]` — **3–4 max.** Recent (last ~12 months) essays, podcasts, talks, or memos on this market from bona fide industry voices: founders, investors, named operators. Bar is "this person actually moves opinion in this space" — skip mainstream press, sell-side analysts, generic newsletters. Each entry: `title`, `summary` (1–2 sentences capturing the actual argument), `author`, `role` (e.g. "Partner, a16z" or "Founder, Stripe"), `source` (publication or platform name), `url`, `date`. If you genuinely can't find 3, return fewer; don't pad with mediocre links.
 - `competitors.list[]` — 3–5 most directly competitive. Each gets exactly four chips in dimension order: product, pricing, perception, leadership. Verdicts from the SUBJECT COMPANY's perspective: 'lead' / 'lag' / 'equal'. Default to 'equal' when you can't defend a clear lead/lag with a specific fact.
 - `tam.headline` — `{ low, high }` headline TAM as raw USD numbers (e.g. `8_000_000_000`). Bottom-up: ACV × addressable buyers, summed across enterprise + mid-market, with a reasonable multiplier range to cover assumptions. Don't paste an analyst report's top-down number.
 - `tam.analysis` — 1–2 paragraphs explaining the bottom-up build, the structural assumptions (penetration ceiling, ACV trajectory, motion shift), and what would expand or compress the range.
@@ -850,6 +1171,7 @@ Replace `BRIEF` with the real researched data. Specifically:
 - `thesis.bearCase[]` — 3–5 bullets a sharp partner would actually voice. Specific. Naming names if relevant.
 - `thesis.keyRisks[]` — 3–5 bullets distinct from bear case: operational, regulatory, market, or execution risks that could materialize regardless of thesis.
 - `diligence.priorities[]` — 4–6 entries. Each `{ area, why, asks: [string] }`. The highest-leverage things to harden in DD: revenue quality, retention, concentration, regulatory exposure, key person risk, gross margin trajectory, etc. Each should have 1–3 specific asks (data requests or questions for the team).
+- `diligenceInsights` — **leave as `null` on the initial brief.** This populates Tab B only after the user shares actual diligence artifacts (deck, financial model, customer references, investor memo, etc.) in a follow-up turn. See "Diligence Insights tab" below.
 
 If a section legitimately has nothing — early-stage company, no public news — pass an empty array. The component handles empty news gracefully. Don't fabricate.
 
@@ -867,9 +1189,44 @@ If a section legitimately has nothing — early-stage company, no public news �
 
 ## Follow-up mode
 
-After producing the artifact, the user may ask follow-ups about that company — "what would you push back on?", "draft 5 questions for the CEO", "what's their gross margin profile likely to be?", "compare them to <competitor>", "what's the bear case?". Answer concisely in chat (don't regenerate the artifact unless asked for an updated brief). For questions that need fresh data, search again.
+After producing the artifact, the user may ask follow-up questions about the company. Treat the **entire brief artifact as your operative context**: the core thesis, founders, news, competitors, TAM build, thought leadership, bull/bear/risks, diligence priorities, and any populated Diligence Insights are all in your head when you answer.
 
-If the user names a *new* company in a follow-up ("now do Mercury"), produce a fresh full artifact.
+How to respond:
+
+- **Voice and stance.** Always answer as a thesis-driven but financially diligent investor — opinionated, specific, willing to commit to a view. Reference the brief explicitly when it's relevant ("the bear case in the brief flags X; here's how that interacts with your question…"). Avoid hedge-words; if something is genuinely uncertain, name what would resolve the uncertainty.
+- **Do additional reasoning.** Don't just retrieve from the brief. Connect dots: pricing × gross margin × scale curves; competitive moves × hiring patterns × roadmap; TAM segments × motion economics × ramp. Show your work in 1–3 short paragraphs unless the question is binary.
+- **Do additional research when helpful.** If the question needs fresh data the brief doesn't cover (specific metrics, recent announcements, new competitor moves, regulatory developments, customer references), use web_search. Cite what you find.
+- **Honest disagreements.** If the question's framing is wrong or there's a better question to be asking, say so first, then answer. A partner would.
+- **Format.** Conversational chat by default. Tight bullets when the answer is naturally a list (questions for the CEO, top risks, etc.). Don't regenerate the artifact for chat answers.
+
+Common follow-ups and how to handle them:
+- *"What would you push back on?"* — Pick the 2–3 weakest claims in the bull case or the most credulous parts of the founder narrative; argue them.
+- *"Draft N questions for the CEO."* — Specific, opinionated, designed to surface the things the brief flagged as unknown. No softball questions.
+- *"What's the bear case in one paragraph?"* — Synthesize the bear-case bullets into a flowing argument with the strongest single thread.
+- *"Compare them to <competitor>."* — Pull the existing competitor card if present; extend with deeper analysis. If the competitor isn't in the brief, search and answer fresh.
+- *"What metrics matter most?"* — Tie back to the diligence priorities; rank.
+
+### When the user shares diligence artifacts (Tab B)
+
+If the user shares structured diligence material — a data-room deck, a financial model spreadsheet, customer references, an investor memo, cohort tables, anything they'd review before signing a term sheet — **regenerate the artifact** with the **`diligenceInsights` field populated**. This switches the Diligence Insights tab from the empty state to the analytical view, and the tab indicator shows a small live dot so the user knows there's new content there.
+
+Populate `diligenceInsights` with this shape:
+
+- `artifactsAnalyzed: string[]` — names / brief descriptions of what you reviewed.
+- `summary: string` — 1–2 paragraphs. Eloquent. The headline: what the data changed about your view, what it confirmed, what it overturned. Written like the lead paragraph of a partner memo update.
+- `keyTakeaways: string[]` — 4–8 bullets. The crisp list of things the data revealed.
+- `updatedFlags: { title, description }[]` — any new red flags the data surfaces. Empty array if none.
+- `updatedBullCase: string[]` — refined bull case in light of the data. Strengthen what the data supports; drop or rewrite what it weakens. If the bull case is unchanged, return the original bullets.
+- `updatedBearCase: string[]` — same treatment for the bear case.
+- `updatedKeyRisks: string[]` — same for risks. The data may surface new ones (e.g. concentration risk visible in the customer table).
+- `updatedQuestions: { area, why, asks }[]` — refined diligence questions. The data resolves some old questions and raises new ones.
+- `stillNeed: string[]` — gaps the artifacts didn't fill. Concrete and specific.
+
+Keep all other fields (the original `what`, `founders`, `news`, etc.) **as-is** when re-emitting the artifact — only change `diligenceInsights`. The user wants the original brief preserved and the new analysis layered on.
+
+Reply in chat with a 1-paragraph summary of the most important shift the new data caused, then point them at the updated Diligence Insights tab.
+
+If the user names a *new* company in a follow-up ("now do Mercury"), produce a fresh full artifact (with `diligenceInsights: null`).
 
 ## Fallback
 
