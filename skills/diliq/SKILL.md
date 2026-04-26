@@ -1,6 +1,6 @@
 ---
 name: diliq
-description: Generate a pre-meeting VC investment brief on a named company as an interactive artifact. Use when the user asks for a brief, deep-dive, due-diligence prep, or company research (e.g. "brief me on Stripe", "/diliq Anthropic", "research Brex"). Renders a two-tab artifact — Company Overview (thesis, founders, news, competitors, TAM, bull/bear/risks, diligence asks) and Diligence Insights (activates when the user shares decks, models, or memos).
+description: 'Generate a pre-meeting VC investment brief on a named company as an interactive artifact. Use when the user asks for a brief, deep-dive, due-diligence prep, or company research (e.g. brief me on Stripe, /diliq Anthropic, research Brex). Renders a two-tab artifact - Company Overview (thesis, founders, news, competitors, TAM, bull/bear/risks, diligence asks) and Diligence Insights (activates when the user shares decks, models, or memos).'
 ---
 
 # Diliq — VC Pre-Meeting Brief (Interactive)
