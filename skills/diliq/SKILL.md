@@ -290,6 +290,33 @@ function CompanyLogo({ name, domain }) {
   );
 }
 
+// Smaller logo for competitor cards. Same favicon → initials fallback; no
+// halo at this size (too busy).
+function CompetitorLogo({ name, domain }) {
+  const [errored, setErrored] = useState(false);
+  const initials = initialsOf(name) || "·";
+  const showFallback = !domain || errored;
+  return (
+    <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
+      {showFallback ? (
+        <div className="grid h-full w-full place-items-center bg-gradient-to-br from-violet-500/25 to-cyan-400/25 text-[11px] font-medium text-white/85">
+          {initials}
+        </div>
+      ) : (
+        <img
+          src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
+          alt=""
+          referrerPolicy="no-referrer"
+          crossOrigin="anonymous"
+          className="h-full w-full object-cover"
+          onError={() => setErrored(true)}
+        />
+      )}
+      <div className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-inset ring-white/10" />
+    </div>
+  );
+}
+
 // ============================================================================
 // Animation primitives (no framer-motion required)
 // ============================================================================
@@ -604,11 +631,14 @@ export default function Brief() {
             <ul className="mt-6 space-y-4">
               {competitors.list.map((c, i) => (
                 <li key={i} className="rounded-xl border border-white/[0.07] bg-white/[0.015] p-5 transition-colors hover:border-white/[0.14] hover:bg-white/[0.025]">
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-                    <p className="text-base font-medium text-white">{c.name}</p>
+                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <CompetitorLogo name={c.name} domain={c.domain} />
+                      <p className="truncate text-base font-medium text-white">{c.name}</p>
+                    </div>
                     {c.domain && <span className="font-mono text-[11px] text-white/30">{c.domain}</span>}
                   </div>
-                  <p className="mt-1 text-sm leading-relaxed text-white/60">{c.tagline}</p>
+                  <p className="mt-2 text-sm leading-relaxed text-white/60">{c.tagline}</p>
                   <dl className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                     {c.chips.map((chip, j) => {
                       const v = VERDICT[chip.verdict];
