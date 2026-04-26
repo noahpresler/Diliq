@@ -942,7 +942,13 @@ export default function Brief() {
           <GlowCard title="Competitive landscape" delay={420}>
             <p className="text-sm leading-relaxed text-white/70">{competitors.marketSummary}</p>
             <ul className="mt-6 space-y-4">
-              {competitors.list.map((c, i) => (
+              {competitors.list.map((c, i) => {
+                const leads = c.chips.filter((x) => x.verdict === "lead").length;
+                const lags = c.chips.filter((x) => x.verdict === "lag").length;
+                const evens = c.chips.filter((x) => x.verdict === "equal").length;
+                const verdictName = (verdict) =>
+                  verdict === "lead" ? company.name : verdict === "lag" ? c.name : null;
+                return (
                 <li key={i} className="rounded-xl border border-white/[0.07] bg-white/[0.015] p-5 transition-colors hover:border-white/[0.14] hover:bg-white/[0.025]">
                   <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
                     <div className="flex min-w-0 items-center gap-2.5">
@@ -952,16 +958,46 @@ export default function Brief() {
                     {c.domain && <span className="font-mono text-[11px] text-white/30">{c.domain}</span>}
                   </div>
                   <p className="mt-2 text-sm leading-relaxed text-white/60">{c.tagline}</p>
-                  <dl className="mt-4 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+
+                  {/* Scoreline header — at-a-glance who leads in how many dimensions */}
+                  <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border border-white/[0.05] bg-black/20 px-3 py-2 text-[11px]">
+                    <span className="font-mono uppercase tracking-[0.16em] text-white/40">vs {company.name}</span>
+                    <span className="text-white/25">·</span>
+                    <span className="inline-flex items-center gap-1 text-emerald-200">
+                      <ArrowUpRight className="h-3 w-3" />
+                      <span className="font-mono tabular-nums">{leads}</span>
+                      <span className="text-white/55">{company.name} leads</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-rose-200">
+                      <ArrowDownRight className="h-3 w-3" />
+                      <span className="font-mono tabular-nums">{lags}</span>
+                      <span className="text-white/55">{c.name} leads</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-white/55">
+                      <Minus className="h-3 w-3" />
+                      <span className="font-mono tabular-nums">{evens}</span>
+                      <span>even</span>
+                    </span>
+                  </div>
+
+                  <dl className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
                     {c.chips.map((chip, j) => {
                       const v = VERDICT[chip.verdict];
+                      const winner = verdictName(chip.verdict);
                       return (
                         <div key={j} className="rounded-lg border border-white/[0.05] bg-black/30 p-3">
-                          <div className="flex items-center justify-between gap-2">
+                          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
                             <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-white/45">{DIMENSION_LABEL[chip.dimension]}</dt>
-                            <span className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${v.chip}`}>
-                              <v.Icon className="h-3 w-3" />
-                              {v.label}
+                            <span className={`inline-flex max-w-full items-center gap-1 truncate rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${v.chip}`}>
+                              <v.Icon className="h-3 w-3 shrink-0" />
+                              {chip.verdict === "equal" ? (
+                                <span>Even</span>
+                              ) : (
+                                <span className="truncate">
+                                  <span className="font-semibold">{winner}</span>{" "}
+                                  <span className="opacity-70">leads</span>
+                                </span>
+                              )}
                             </span>
                           </div>
                           <dd className="mt-2 text-xs leading-relaxed text-white/70">{chip.description}</dd>
@@ -970,7 +1006,8 @@ export default function Brief() {
                     })}
                   </dl>
                 </li>
-              ))}
+                );
+              })}
             </ul>
             <SourceList sources={competitors.sources} />
           </GlowCard>
