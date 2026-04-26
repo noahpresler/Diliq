@@ -42,17 +42,17 @@ Replace the example values in the HTML template inline. Each field's expected co
 
 - **Company header** — title, domain (or omit the link line), `as of` date in `Mon DD, YYYY` form. Favicon URL pattern stays as `https://www.google.com/s2/favicons?domain={domain}&sz=128`; the inline `onerror` swap to gradient initials handles broken images.
 - **Optional company note** — one line below the title for disambiguation ("Apollo (Apollo.io — sales engagement)"). Delete the `<p class="company-note">` element entirely if not needed.
-- **Red flags** — **leave the `<section class="card card-redflag">` element OUT entirely unless there are MAJOR red flags.** Threshold is high: active litigation, regulatory action, fraud allegations, key-founder departure mid-round, material customer loss, security incident, accounting concerns. Routine bad news belongs in `news` or `bearCase`.
-- **Core thesis** — 2–3 sentences. Concrete, opinionated, defensible — what a partner would say at a Monday meeting. No hedge-words. If the company is uninvestable, replace with a one-sentence "Pass — [reason]".
-- **What they do** — tagline ~10–15 words, 2–3 sentence summary, 1–2 paragraphs how-it-works. Specific, never generic.
-- **Founders & key people** — 1–6 people. Include LinkedIn link only when verified via search; otherwise omit the link element entirely. Notable signal is optional — omit the chip element when null.
-- **Recent news** — max 8 items, newest first. Categories: `funding`, `product`, `people`, `press`, `other` — each maps to a CSS class `cat-funding` / etc. Skip routine PR fluff.
-- **Thought leadership** — 3–4 max recent pieces from bona fide industry voices (founders, investors, named operators). Bar: "this person actually moves opinion in this space." Skip mainstream press / sell-side analysts.
-- **Competitive landscape** — 3–5 most directly competitive companies. For each: scoreline (computed from the four chip verdicts) shows `{leads}` / `{lags}` / `{equal}` from the SUBJECT company's perspective, plus four chips, one per dimension (product, pricing, perception, leadership). Each chip's verdict label names the winner explicitly: "Anthropic leads", "OpenAI leads", or "Even".
-- **Market opportunity** — bottom-up TAM, with headline range, 1–2 paragraph analysis, side-by-side enterprise + mid-market segment cards (avg ACV, buyer count, implied TAM each), and a 5×5 sensitivity table where rows are ACVs and columns are buyer counts. Compute the cell values inline (`ACV × buyers`); shade darker for larger by adding inline `style="background:rgba(139,92,246,X)"` where X scales with relative size.
-- **Investment thesis** — bull case, bear case, key risks. 3–5 bullets each. Specific, no generic hedge-words.
-- **Diligence priorities** — 4–6 numbered items. Each: area, why, 1–3 specific asks for the team / data room.
-- **Diligence Insights tab** — leave the empty-state element in place on the initial brief. Populate only after the user shares actual diligence artifacts (see "Follow-up mode" below).
+- **Red flags** — **leave the `<section class="card card-redflag">` element OUT entirely unless there are MAJOR red flags.** Threshold is high: active litigation, regulatory action, fraud allegations, key-founder departure mid-round, material customer loss, security incident, accounting concerns. Routine bad news belongs in `news` or `bearCase`. **Every flag description must include an inline `<a>` link to the source AND the section's `<div class="sources">` block at the bottom must list each source.**
+- **Core thesis** — 2–3 sentences. Concrete, opinionated, defensible — what a partner would say at a Monday meeting. No hedge-words. If the company is uninvestable, replace with a one-sentence "Pass — [reason]". **Keep the small "Synthesized from sources cited throughout the brief…" footer below the thesis text and link it to 2–3 of the strongest underpinning sources.**
+- **What they do** — tagline ~10–15 words, 2–3 sentence summary, 1–2 paragraphs how-it-works. Specific, never generic. **Sources block at the bottom is required.**
+- **Founders & key people** — 1–6 people. Include LinkedIn link only when verified via search; otherwise omit the link element entirely. Notable signal is optional — omit the chip element when null. **Sources block at the bottom is required** (founder LinkedIn URLs, biographical articles, press features, etc.).
+- **Recent news** — max 8 items, newest first. Categories: `funding`, `product`, `people`, `press`, `other` — each maps to a CSS class `cat-funding` / etc. Skip routine PR fluff. **Each item already has its own source link inline (the `<a class="item-title">` URL plus source/publication metadata) — that's the citation; no separate sources block needed for this card.**
+- **Thought leadership** — 3–4 max recent pieces from bona fide industry voices (founders, investors, named operators). Bar: "this person actually moves opinion in this space." Skip mainstream press / sell-side analysts. **Each item links to its own source — no separate sources block needed.**
+- **Competitive landscape** — 3–5 most directly competitive companies. For each: scoreline (computed from the four chip verdicts) shows `{leads}` / `{lags}` / `{equal}` from the SUBJECT company's perspective, plus four chips, one per dimension (product, pricing, perception, leadership). Each chip's verdict label names the winner explicitly: "Anthropic leads", "OpenAI leads", or "Even". **Sources block at the bottom is required** — cite the comparison points (pricing pages, customer wins, exec announcements).
+- **Market opportunity** — bottom-up TAM, with headline range, 1–2 paragraph analysis, side-by-side enterprise + mid-market segment cards (avg ACV, buyer count, implied TAM each), and a 5×5 sensitivity table where rows are ACVs and columns are buyer counts. Compute the cell values inline (`ACV × buyers`); shade darker for larger by adding inline `style="background:rgba(139,92,246,X)"` where X scales with relative size. **Sources block at the bottom is required** — cite the buyer-count source (Census / Gartner / segment report) and any cross-checks against top-down sizing.
+- **Investment thesis** — bull case, bear case, key risks. 3–5 bullets each. Specific, no generic hedge-words. **Sources block at the bottom is required** — cite the inputs that drive each named claim (an OSS metric link for "14K stars", a press article for "AWS launches X", etc.).
+- **Diligence priorities** — 4–6 numbered items. Each: area, why, 1–3 specific asks for the team / data room. **Each `why` paragraph should include an inline `<a>` link to whatever public reporting raised the question, AND the sources block at the bottom should list the primary references.**
+- **Diligence Insights tab** — leave the empty-state element in place on the initial brief. Populate only after the user shares actual diligence artifacts (see "Follow-up mode" below). When populated, every analytical claim should reference either the shared artifact (e.g. "deck p. 12") inline or a public source.
 
 ## The complete HTML template
 
@@ -411,10 +411,16 @@ footer{margin-top:4rem;padding-top:1.5rem;border-top:1px solid var(--border2);te
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
           <div>
             <div class="flag-title">DOJ inquiry opened Feb 2026</div>
-            <div class="flag-desc">Reuters reports an antitrust review of Acme's pricing practices in mid-market accounts; subpoenas issued to two largest customers.</div>
+            <div class="flag-desc"><a href="https://www.reuters.com/legal/doj-acme-inquiry" target="_blank" rel="noopener noreferrer" style="color:rgba(254,205,211,0.95);text-decoration:underline;text-decoration-color:rgba(254,205,211,0.4)">Reuters</a> reports an antitrust review of Acme's pricing practices in mid-market accounts; subpoenas issued to two largest customers.</div>
           </div>
         </li>
       </ul>
+      <div class="sources">
+        <div class="sources-label">Sources</div>
+        <ul class="sources-list">
+          <li><a href="https://www.reuters.com/legal/doj-acme-inquiry" target="_blank" rel="noopener noreferrer">Reuters — DOJ inquiry</a></li>
+        </ul>
+      </div>
     </section>
 
     <!-- Core thesis -->
@@ -424,6 +430,7 @@ footer{margin-top:4rem;padding-top:1.5rem;border-top:1px solid var(--border2);te
         Core thesis
       </div>
       <p class="thesis-text">Acme is the only vendor in the workflow-automation category that owns both the runtime and the IDE — every other player is one or the other. That ownership lets them collect the proprietary execution traces that compound into a structural moat as agentic workloads scale. We're betting on a 3-year window before incumbents stitch the two halves together.</p>
+      <p style="position:relative;margin-top:1.25rem;font-size:11px;color:rgba(255,255,255,0.40)">Synthesized from sources cited throughout the brief — see <a href="https://www.sequoiacap.com/article/agent-runtime-thesis" target="_blank" rel="noopener noreferrer" style="color:rgba(196,181,253,0.85);text-decoration:none">Sequoia thesis</a>, <a href="https://www.theinformation.com/articles/acme-series-c" target="_blank" rel="noopener noreferrer" style="color:rgba(196,181,253,0.85);text-decoration:none">Series C reporting</a>, and the competitive landscape below.</p>
     </section>
 
     <!-- What -->
@@ -466,6 +473,14 @@ footer{margin-top:4rem;padding-top:1.5rem;border-top:1px solid var(--border2);te
           </div>
         </li>
       </ul>
+      <div class="sources">
+        <div class="sources-label">Sources</div>
+        <ul class="sources-list">
+          <li><a href="https://www.linkedin.com/in/janedoe" target="_blank" rel="noopener noreferrer">Jane Doe — LinkedIn</a></li>
+          <li><a href="https://stripe.com/blog/connect-platform-history" target="_blank" rel="noopener noreferrer">Stripe blog — Connect history</a></li>
+          <li><a href="https://www.forbes.com/30-under-30/enterprise-tech/2023" target="_blank" rel="noopener noreferrer">Forbes 30 Under 30 — Enterprise Tech 2023</a></li>
+        </ul>
+      </div>
     </section>
 
     <!-- News -->
@@ -695,6 +710,13 @@ footer{margin-top:4rem;padding-top:1.5rem;border-top:1px solid var(--border2);te
           </div>
           <p class="sens-note">Cells shaded by relative TAM — darker = larger.</p>
         </div>
+        <div class="sources">
+          <div class="sources-label">Sources</div>
+          <ul class="sources-list">
+            <li><a href="https://www.census.gov/programs-surveys/cbp.html" target="_blank" rel="noopener noreferrer">US Census — County Business Patterns (buyer count)</a></li>
+            <li><a href="https://www.gartner.com/en/documents/agentic-ai-market" target="_blank" rel="noopener noreferrer">Gartner — Agentic AI Market sizing (sanity check)</a></li>
+          </ul>
+        </div>
       </div>
     </section>
 
@@ -734,6 +756,14 @@ footer{margin-top:4rem;padding-top:1.5rem;border-top:1px solid var(--border2);te
             <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Active DOJ inquiry (see red flag) could chill enterprise sales cycles for 12-18 months.</li>
           </ul>
         </div>
+        <div class="sources">
+          <div class="sources-label">Sources</div>
+          <ul class="sources-list">
+            <li><a href="https://github.com/acme/runtime/stargazers" target="_blank" rel="noopener noreferrer">GitHub — Acme star history</a></li>
+            <li><a href="https://aws.amazon.com/step-functions/" target="_blank" rel="noopener noreferrer">AWS Step Functions</a></li>
+            <li><a href="https://www.theinformation.com/articles/acme-customer-concentration" target="_blank" rel="noopener noreferrer">The Information — concentration commentary</a></li>
+          </ul>
+        </div>
       </div>
     </section>
 
@@ -747,7 +777,7 @@ footer{margin-top:4rem;padding-top:1.5rem;border-top:1px solid var(--border2);te
             <span class="dil-num">1</span>
             <div>
               <p class="dil-area">Net revenue retention</p>
-              <p class="dil-why">Public commentary suggests strength but no disclosed number; gross retention vs net unclear.</p>
+              <p class="dil-why"><a href="https://www.theinformation.com/articles/acme-retention-commentary" target="_blank" rel="noopener noreferrer" style="color:rgba(255,255,255,0.75);text-decoration:underline;text-decoration-color:rgba(255,255,255,0.25)">Public commentary</a> suggests strength but no disclosed number; gross retention vs net unclear.</p>
               <ul class="dil-asks">
                 <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>Cohort NRR by segment for last 8 quarters</li>
                 <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>Top-10 customer concentration and churn risk in those accounts</li>
@@ -756,6 +786,12 @@ footer{margin-top:4rem;padding-top:1.5rem;border-top:1px solid var(--border2);te
           </div>
         </li>
       </ul>
+      <div class="sources">
+        <div class="sources-label">Sources</div>
+        <ul class="sources-list">
+          <li><a href="https://www.theinformation.com/articles/acme-retention-commentary" target="_blank" rel="noopener noreferrer">The Information — retention commentary</a></li>
+        </ul>
+      </div>
     </section>
 
   </section>
@@ -814,7 +850,8 @@ Keep the original Overview tab data unchanged when re-emitting the artifact — 
 
 ## Guardrails
 
-- **Never invent**: a credential, prior employer, funding number, customer name, LinkedIn URL, competitor, or specific metric.
+- **Cite every factual claim.** Every section that asserts a fact must either (a) link to its source inline (an `<a>` tag inside the prose where the claim is made) or (b) end with a `<div class="sources">` block listing the URLs that back the section's claims, or both. Sections in the template that have a `<div class="sources">` block at the bottom must NEVER ship with that block empty — populate it or remove the section. Empty sources blocks are unacceptable.
+- **Never invent**: a credential, prior employer, funding number, customer name, LinkedIn URL, competitor, specific metric, or URL. A fabricated source URL is worse than no citation. If you can't find a real link to back a claim, drop the claim.
 - If uncertain about a fact, omit it. If sources disagree, surface the disagreement in one line.
 - For thesis content (core thesis / bull / bear / risks / diligence): synthesize from the facts you gathered. Be opinionated but grounded — every claim should trace back to something you searched. No "could" / "might" / "potentially" hedge-words; if it's speculative, say so explicitly with "speculative:" prefix.
 - The **core thesis** is the most important paragraph in the brief. Spend disproportionate care on it. It should pass the "would a partner actually say this in a meeting?" test — concrete, opinionated, defensible. Vague generic theses ("they're well-positioned to capture a large market") are a fail.
