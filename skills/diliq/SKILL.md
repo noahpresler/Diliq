@@ -9,17 +9,107 @@ You produce a pre-meeting investment brief on a single company for a partner at 
 
 ## Output rules — read this first
 
-**Always create an artifact.** Use the artifact creation capability available to you in this conversation. Do **not** dump JSX, markdown, or code blocks directly into the chat response. The chat reply should be a one-line confirmation pointing at the artifact ("Brief on [Company] — open the artifact in the side panel."), with all the content living inside the artifact itself.
+**Always create an artifact.** Use the artifact creation capability available to you in this conversation. Do **not** dump JSX, HTML, markdown, or code blocks directly into the chat response. The chat reply should be a one-line confirmation pointing at the artifact ("Brief on [Company] — open the artifact in the side panel."), with all the content living inside the artifact itself.
 
-**Artifact type, in order of preference:**
+**Default artifact type: `text/html` (self-contained HTML).** Most Claude environments — including Claude for Work / "Cowork" tenants — only allow `text/html` artifacts. The HTML wrapper provided below loads React + Tailwind + Babel from CDN and renders the same component as a native React artifact would, with the same look. **Use HTML by default** — do not try `application/vnd.ant.react` first; some workspaces silently reject it and Claude can end up dumping JSX as plain text, which is the worst-of-all-worlds outcome.
 
-1. **React** — `application/vnd.ant.react`. This is the intended output and what the embedded skeleton in this skill is written for.
-2. **HTML** — `text/html`. If the workspace doesn't support React artifacts (some Claude for Work / Enterprise tenants disable the type), wrap the same JSX into a single self-contained `<!doctype html>` page that loads React + Tailwind from CDN. Same look, same data, same tab behavior.
-3. **Markdown** — `text/markdown`. Last-resort fallback. Use only if both React and HTML artifacts fail. Same six-section structure described in the markdown fallback at the bottom of this file.
+**Hard rule: never emit JSX or large code blocks inline in the chat.** If you somehow can't create an HTML artifact at all, fall through to the markdown fallback at the bottom of this file (which is *prose*, not code) and tell the user once: "Artifacts aren't enabled in your workspace, so I produced the brief as a markdown document instead."
 
-**Never emit JSX or large code blocks as plain text in the chat.** If for any reason artifacts can't be created at all in this environment, fall through to the markdown fallback (which is *prose*, not code) and tell the user once: "Artifacts aren't enabled in your workspace, so I produced the brief as a markdown document instead."
+The output is an **HTML artifact** rendered live in the Claude side panel.
 
-The output is a **React component artifact** rendered live in the Claude side panel.
+## How to assemble the HTML artifact
+
+The skill contains a complete JSX component (the "embedded skeleton" further down). To produce the artifact:
+
+1. Take the JSX component from the embedded skeleton.
+2. Replace its `import { ... } from "lucide-react"` line with the inline `Icon` component defined in the HTML wrapper below (and replace every `<XyzIcon />` JSX usage with `<Icon name="Xyz" />`).
+3. Inline that JSX inside the `<script type="text/babel" data-presets="react">` block of the HTML wrapper.
+4. At the end of the script, add: `const root = ReactDOM.createRoot(document.getElementById("root")); root.render(<Brief />);`
+5. Create the artifact with `type: "text/html"` and the entire wrapper as the content.
+
+### HTML wrapper template
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Pre-Meeting Brief</title>
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+      html, body, #root { background: #000; min-height: 100%; }
+      body { margin: 0; -webkit-font-smoothing: antialiased; }
+    </style>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="text/babel" data-presets="react">
+      const { useState, useRef } = React;
+
+      // Inline Icon component — replaces lucide-react. Stroke-based, 24x24
+      // viewBox, currentColor stroke. Path data taken from lucide.dev.
+      const ICON_PATHS = {
+        ExternalLink: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+        ArrowUpRight: '<path d="M7 7h10v10"/><path d="M7 17 17 7"/>',
+        ArrowDownRight: '<path d="m7 7 10 10"/><path d="M17 7v10H7"/>',
+        ArrowRight: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+        Minus: '<path d="M5 12h14"/>',
+        Linkedin: '<path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/>',
+        TrendingUp: '<path d="M22 7 13.5 15.5 8.5 10.5 2 17"/><path d="M16 7h6v6"/>',
+        TrendingDown: '<path d="M22 17 13.5 8.5 8.5 13.5 2 7"/><path d="M16 17h6v-6"/>',
+        AlertTriangle: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+        Search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+        Flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/>',
+        Target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
+        Sparkles: '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/>',
+        Lightbulb: '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>',
+        FileText: '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/>',
+        Layers: '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
+        Quote: '<path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/>',
+      };
+      function Icon({ name, className, style }) {
+        const d = ICON_PATHS[name] || "";
+        return (
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={className}
+            style={style}
+            dangerouslySetInnerHTML={{ __html: d }}
+          />
+        );
+      }
+
+      /* === BEGIN INLINED COMPONENT — paste the JSX from the embedded
+           skeleton here. Wherever the embedded skeleton uses a lucide
+           icon like <ExternalLink /> or <Icon as v.Icon />, swap it for
+           <Icon name="ExternalLink" /> with the same className/style.
+           Examples:
+             <ExternalLink className="h-3 w-3" />
+               -> <Icon name="ExternalLink" className="h-3 w-3" />
+             <v.Icon className="h-3 w-3" />     // where v.Icon = ArrowUpRight
+               -> <Icon name={chip.verdict === "lead" ? "ArrowUpRight" : chip.verdict === "lag" ? "ArrowDownRight" : "Minus"} className="h-3 w-3" />
+           Also drop the `import { ... } from "lucide-react"` line; it's
+           not needed when using the Icon component.
+      === */
+
+      const root = ReactDOM.createRoot(document.getElementById("root"));
+      root.render(<Brief />);
+    </script>
+  </body>
+</html>
+```
+
+The wrapper is the only file Claude submits as the artifact content. The embedded JSX skeleton further down is the *source* you copy from — not a separate artifact.
 
 ## Persona
 
@@ -38,9 +128,9 @@ The reader is sharp, time-constrained, scanning for signal. Be concrete and spec
 
 3. **Synthesize the thesis.** After research, form your own bull case, bear case, key risks, and the highest-leverage diligence questions. Don't copy talking points — write the partner's-eye view.
 
-4. **Create the artifact** using the artifact tool / capability available in this conversation. Default: a single React component (`type: application/vnd.ant.react`) with the data embedded inline. No external fetches. No file imports beyond `react` and `lucide-react`. If React artifacts aren't supported in this workspace, see the type-fallback ladder under "Output rules" above.
+4. **Create the HTML artifact** (`type: text/html`) using the wrapper template under "How to assemble the HTML artifact" above. The artifact is a single self-contained HTML document; React, Tailwind, and Babel come from CDN. The component code (paste the embedded skeleton's JSX into the wrapper's `<script type="text/babel">` block) needs no `lucide-react` import — use the inline `Icon` component the wrapper defines. The data is embedded inline in `BRIEF`. No runtime fetches.
 
-## Output: the React artifact
+## The embedded JSX skeleton (source for the HTML artifact)
 
 ### Design language
 
