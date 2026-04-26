@@ -9,107 +9,13 @@ You produce a pre-meeting investment brief on a single company for a partner at 
 
 ## Output rules — read this first
 
-**Always create an artifact.** Use the artifact creation capability available to you in this conversation. Do **not** dump JSX, HTML, markdown, or code blocks directly into the chat response. The chat reply should be a one-line confirmation pointing at the artifact ("Brief on [Company] — open the artifact in the side panel."), with all the content living inside the artifact itself.
+**Always create an artifact.** Use the artifact creation capability available in this conversation. Never dump HTML, JSX, or code blocks directly into the chat reply. The chat reply should be a one-line confirmation pointing at the artifact ("Brief on [Company] — open the artifact in the side panel."), with everything else inside the artifact.
 
-**Default artifact type: `text/html` (self-contained HTML).** Most Claude environments — including Claude for Work / "Cowork" tenants — only allow `text/html` artifacts. The HTML wrapper provided below loads React + Tailwind + Babel from CDN and renders the same component as a native React artifact would, with the same look. **Use HTML by default** — do not try `application/vnd.ant.react` first; some workspaces silently reject it and Claude can end up dumping JSX as plain text, which is the worst-of-all-worlds outcome.
+**Artifact type: `text/html`. Always.** The HTML template below is **fully self-contained** — no external CDN, no React, no Babel, no Tailwind, no remote fonts, no remote scripts. Inline CSS only, with minimal vanilla JS for tab switching. This works in every Claude environment that renders HTML at all (including Claude for Work / Cowork / "Milonis Cowork" / Enterprise tenants where iframe sandboxes block external resources).
 
-**Hard rule: never emit JSX or large code blocks inline in the chat.** If you somehow can't create an HTML artifact at all, fall through to the markdown fallback at the bottom of this file (which is *prose*, not code) and tell the user once: "Artifacts aren't enabled in your workspace, so I produced the brief as a markdown document instead."
+**Why no React or external dependencies:** restricted artifact iframes silently block CDN script loads and the entire app fails to mount, leaving a black screen. The self-contained template guarantees the artifact renders identically whether it's in an inline live preview, an external Chrome tab, or any other artifact viewer.
 
-The output is an **HTML artifact** rendered live in the Claude side panel.
-
-## How to assemble the HTML artifact
-
-The skill contains a complete JSX component (the "embedded skeleton" further down). To produce the artifact:
-
-1. Take the JSX component from the embedded skeleton.
-2. Replace its `import { ... } from "lucide-react"` line with the inline `Icon` component defined in the HTML wrapper below (and replace every `<XyzIcon />` JSX usage with `<Icon name="Xyz" />`).
-3. Inline that JSX inside the `<script type="text/babel" data-presets="react">` block of the HTML wrapper.
-4. At the end of the script, add: `const root = ReactDOM.createRoot(document.getElementById("root")); root.render(<Brief />);`
-5. Create the artifact with `type: "text/html"` and the entire wrapper as the content.
-
-### HTML wrapper template
-
-```html
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Pre-Meeting Brief</title>
-    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>
-      html, body, #root { background: #000; min-height: 100%; }
-      body { margin: 0; -webkit-font-smoothing: antialiased; }
-    </style>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="text/babel" data-presets="react">
-      const { useState, useRef } = React;
-
-      // Inline Icon component — replaces lucide-react. Stroke-based, 24x24
-      // viewBox, currentColor stroke. Path data taken from lucide.dev.
-      const ICON_PATHS = {
-        ExternalLink: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
-        ArrowUpRight: '<path d="M7 7h10v10"/><path d="M7 17 17 7"/>',
-        ArrowDownRight: '<path d="m7 7 10 10"/><path d="M17 7v10H7"/>',
-        ArrowRight: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
-        Minus: '<path d="M5 12h14"/>',
-        Linkedin: '<path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-4 0v7h-4v-7a6 6 0 0 1 6-6z"/><rect width="4" height="12" x="2" y="9"/><circle cx="4" cy="4" r="2"/>',
-        TrendingUp: '<path d="M22 7 13.5 15.5 8.5 10.5 2 17"/><path d="M16 7h6v6"/>',
-        TrendingDown: '<path d="M22 17 13.5 8.5 8.5 13.5 2 7"/><path d="M16 17h6v-6"/>',
-        AlertTriangle: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
-        Search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
-        Flag: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/>',
-        Target: '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
-        Sparkles: '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/>',
-        Lightbulb: '<path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/>',
-        FileText: '<path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/>',
-        Layers: '<path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/>',
-        Quote: '<path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/>',
-      };
-      function Icon({ name, className, style }) {
-        const d = ICON_PATHS[name] || "";
-        return (
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={className}
-            style={style}
-            dangerouslySetInnerHTML={{ __html: d }}
-          />
-        );
-      }
-
-      /* === BEGIN INLINED COMPONENT — paste the JSX from the embedded
-           skeleton here. Wherever the embedded skeleton uses a lucide
-           icon like <ExternalLink /> or <Icon as v.Icon />, swap it for
-           <Icon name="ExternalLink" /> with the same className/style.
-           Examples:
-             <ExternalLink className="h-3 w-3" />
-               -> <Icon name="ExternalLink" className="h-3 w-3" />
-             <v.Icon className="h-3 w-3" />     // where v.Icon = ArrowUpRight
-               -> <Icon name={chip.verdict === "lead" ? "ArrowUpRight" : chip.verdict === "lag" ? "ArrowDownRight" : "Minus"} className="h-3 w-3" />
-           Also drop the `import { ... } from "lucide-react"` line; it's
-           not needed when using the Icon component.
-      === */
-
-      const root = ReactDOM.createRoot(document.getElementById("root"));
-      root.render(<Brief />);
-    </script>
-  </body>
-</html>
-```
-
-The wrapper is the only file Claude submits as the artifact content. The embedded JSX skeleton further down is the *source* you copy from — not a separate artifact.
+**Hard rule: never emit raw HTML or code blocks inline in the chat.** If artifacts can't be created at all in this environment (extremely rare), fall through to the markdown fallback at the bottom of this file (prose, not code) and tell the user once: "Artifacts aren't enabled in your workspace, so I produced the brief as a markdown document instead."
 
 ## Persona
 
@@ -117,1204 +23,794 @@ The reader is sharp, time-constrained, scanning for signal. Be concrete and spec
 
 ## Workflow
 
-1. **Resolve the company.** If the user named one company clearly, use it. If ambiguous (e.g. "Apollo" — Apollo.io, Apollo GraphQL, Apollo PE), ask one short clarifying question OR pick the most prominent and note your assumption inline.
+1. **Resolve the company.** If the user named one company clearly, use it. If ambiguous (e.g. "Apollo" — Apollo.io vs Apollo GraphQL vs Apollo PE), ask one short clarifying question OR pick the most prominent and surface your assumption in the optional company note line.
 
 2. **Research with web_search.** 4–7 well-targeted queries should cover:
-   - Current C-suite + founder backgrounds (titles change often; don't trust training)
+   - Current C-suite + founder backgrounds (titles change often)
    - Last 12 months of news (funding, exec moves, launches, customer wins, regulatory)
    - Current competitor lineup
-   - Material thesis facts (TAM, growth rate, differentiation, unit economics if disclosed)
-   - Anything you don't already know confidently
+   - Material thesis facts (TAM, unit economics if disclosed)
+   - 3–4 thought leadership pieces from named operators / investors
 
-3. **Synthesize the thesis.** After research, form your own bull case, bear case, key risks, and the highest-leverage diligence questions. Don't copy talking points — write the partner's-eye view.
+3. **Synthesize the thesis.** Form your own bull case, bear case, key risks, and the highest-leverage diligence questions. Don't copy talking points — write the partner's-eye view. Write the **core thesis** as 2–3 sentences a partner would actually say in a Monday meeting for why they invested.
 
-4. **Create the HTML artifact** (`type: text/html`) using the wrapper template under "How to assemble the HTML artifact" above. The artifact is a single self-contained HTML document; React, Tailwind, and Babel come from CDN. The component code (paste the embedded skeleton's JSX into the wrapper's `<script type="text/babel">` block) needs no `lucide-react` import — use the inline `Icon` component the wrapper defines. The data is embedded inline in `BRIEF`. No runtime fetches.
+4. **Create a single `text/html` artifact** by copying the HTML template below and replacing the example data inline with the real researched data. The example data shows the exact patterns for every section — keep the structure, swap the values.
 
-## The embedded JSX skeleton (source for the HTML artifact)
+## Filling in the data
 
-### Design language
+Replace the example values in the HTML template inline. Each field's expected content:
 
-- **Canvas**: pure `bg-black` with explicit `min-h-screen`. The component must be visually airtight even if rendered against a white parent — no transparency leaks.
-- **Aurora**: soft radial gradient at the top using violet `#8B5CF6` → cyan `#22D3EE`. `pointer-events-none`, blurred, low opacity.
-- **Cards**: `rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur` with a cursor-tracking radial glow (see GlowCard pattern below) and a subtle top-edge highlight that fades in on hover.
-- **Entry animation**: cards stagger in with a 8px lift + fade, eased with `cubic-bezier(0.22,1,0.36,1)`, ~80ms between each.
-- **Hero**: company favicon (use `https://www.google.com/s2/favicons?domain=DOMAIN&sz=128`) with a soft violet/cyan halo behind it; gradient text on the company name; live "as of" badge with a pulsing violet dot.
-- **Accent palette**:
-  - Primary: violet `#8B5CF6` → cyan `#22D3EE` gradient
-  - Funding / "new" signal: amber `#F59E0B` (sparingly)
-  - Bull / positive: emerald `text-emerald-200`
-  - Bear / negative: rose `text-rose-200`
-  - Risk: amber `text-amber-200`
-- **Type scale**: section titles `text-[11px] font-medium uppercase tracking-[0.2em] text-white/40`. Primary body `text-white/85`, secondary `text-white/65`, tertiary `text-white/45`. Display headlines tight tracking, large clamp.
-- **Icons**: `lucide-react`. Use `ExternalLink`, `ArrowUpRight`, `ArrowDownRight`, `Minus`, `Linkedin`, `TrendingUp`, `TrendingDown`, `AlertTriangle`, `Search`.
+- **Company header** — title, domain (or omit the link line), `as of` date in `Mon DD, YYYY` form. Favicon URL pattern stays as `https://www.google.com/s2/favicons?domain={domain}&sz=128`; the inline `onerror` swap to gradient initials handles broken images.
+- **Optional company note** — one line below the title for disambiguation ("Apollo (Apollo.io — sales engagement)"). Delete the `<p class="company-note">` element entirely if not needed.
+- **Red flags** — **leave the `<section class="card card-redflag">` element OUT entirely unless there are MAJOR red flags.** Threshold is high: active litigation, regulatory action, fraud allegations, key-founder departure mid-round, material customer loss, security incident, accounting concerns. Routine bad news belongs in `news` or `bearCase`.
+- **Core thesis** — 2–3 sentences. Concrete, opinionated, defensible — what a partner would say at a Monday meeting. No hedge-words. If the company is uninvestable, replace with a one-sentence "Pass — [reason]".
+- **What they do** — tagline ~10–15 words, 2–3 sentence summary, 1–2 paragraphs how-it-works. Specific, never generic.
+- **Founders & key people** — 1–6 people. Include LinkedIn link only when verified via search; otherwise omit the link element entirely. Notable signal is optional — omit the chip element when null.
+- **Recent news** — max 8 items, newest first. Categories: `funding`, `product`, `people`, `press`, `other` — each maps to a CSS class `cat-funding` / etc. Skip routine PR fluff.
+- **Thought leadership** — 3–4 max recent pieces from bona fide industry voices (founders, investors, named operators). Bar: "this person actually moves opinion in this space." Skip mainstream press / sell-side analysts.
+- **Competitive landscape** — 3–5 most directly competitive companies. For each: scoreline (computed from the four chip verdicts) shows `{leads}` / `{lags}` / `{equal}` from the SUBJECT company's perspective, plus four chips, one per dimension (product, pricing, perception, leadership). Each chip's verdict label names the winner explicitly: "Anthropic leads", "OpenAI leads", or "Even".
+- **Market opportunity** — bottom-up TAM, with headline range, 1–2 paragraph analysis, side-by-side enterprise + mid-market segment cards (avg ACV, buyer count, implied TAM each), and a 5×5 sensitivity table where rows are ACVs and columns are buyer counts. Compute the cell values inline (`ACV × buyers`); shade darker for larger by adding inline `style="background:rgba(139,92,246,X)"` where X scales with relative size.
+- **Investment thesis** — bull case, bear case, key risks. 3–5 bullets each. Specific, no generic hedge-words.
+- **Diligence priorities** — 4–6 numbered items. Each: area, why, 1–3 specific asks for the team / data room.
+- **Diligence Insights tab** — leave the empty-state element in place on the initial brief. Populate only after the user shares actual diligence artifacts (see "Follow-up mode" below).
 
-### Component skeleton
+## The complete HTML template
 
-This is the structural starting point — keep all the styling, animation, and helper code intact. Only replace the `BRIEF` constant with researched data. The aesthetic is a feature; do not strip it.
+Copy this entire document as the content of a `text/html` artifact and replace example values inline. The example data illustrates every section type with realistic content — match the structure when filling in real data.
 
-```jsx
-import { useRef, useState } from "react";
-import {
-  ExternalLink,
-  ArrowUpRight,
-  ArrowDownRight,
-  Minus,
-  Linkedin,
-  TrendingUp,
-  TrendingDown,
-  AlertTriangle,
-  Search,
-  Flag,
-  Target,
-  Sparkles,
-  Lightbulb,
-  FileText,
-  Layers,
-  Quote,
-} from "lucide-react";
-
-const BRIEF = {
-  company: {
-    name: "Acme",
-    domain: "acme.com",
-    asOf: "2026-04-25",
-    note: null, // optional disambiguation note, null otherwise
-  },
-  // Optional. Only populate if there are MAJOR red flags worth raising
-  // before the meeting (e.g. active litigation, founder departure, regulatory
-  // action, fraud allegations). Empty array if none — the component skips
-  // the banner entirely.
-  redFlags: [
-    // { title: "DOJ inquiry opened Feb 2026", description: "1-2 sentence factual summary with source." },
-  ],
-  // 2-3 sentences. The reasoned, concise thesis a partner would actually
-  // state at a Monday meeting for why they would invest. Specific, opinionated,
-  // and grounded in what you researched. Not a tagline — a bet.
-  coreThesis:
-    "2-3 sentences a partner would say to explain why they invested. Concrete, opinionated, defensible.",
-  what: {
-    tagline: "10-15 words; concrete; what they ARE not what they 'enable'",
-    summary: "2-3 sentences expanding the tagline — problem, customer, why it matters.",
-    howItWorks: "1-2 paragraphs on product mechanics, business model, key differentiator.",
-    sources: [{ url: "https://...", title: "..." }],
-  },
-  founders: [
-    {
-      name: "Jane Doe",
-      role: "Co-founder & CEO",
-      background: "Lead with the most impressive prior experience — concrete.",
-      notableSignal: "Optional standout — exit, recognized award. null if nothing.",
-      linkedinUrl: "https://www.linkedin.com/in/janedoe", // verified, or null
-    },
-  ],
-  news: [
-    {
-      title: "Headline or accurate paraphrase",
-      summary: "1-2 sentence takeaway — the so-what.",
-      url: "https://...",
-      source: "TechCrunch",
-      date: "2026-03-12",
-      category: "funding", // 'funding' | 'product' | 'people' | 'press' | 'other'
-    },
-  ],
-  // 3-4 recent thought leadership pieces from bona fide industry voices —
-  // founders, investors, or named operators in the space. Skip mainstream
-  // press and analyst reports; the bar is "this person actually moves
-  // opinion in this market." Keep summaries punchy.
-  thoughtLeadership: [
-    {
-      title: "Title of the essay / podcast / talk",
-      summary: "1-2 sentence summary of the core argument or insight.",
-      author: "Author name",
-      role: "Their role/affiliation, e.g. 'Founder, Stripe' or 'Partner, Sequoia'",
-      source: "Stratechery / Substack / Lenny's Newsletter / a16z / ... ",
-      url: "https://...",
-      date: "2026-02-20",
-    },
-  ],
-  competitors: {
-    marketSummary: "1-2 sentences on how competition actually plays out.",
-    list: [
-      {
-        name: "Competitor Co",
-        domain: "competitor.com",
-        tagline: "10-15 word concrete tagline",
-        chips: [
-          { dimension: "product",    verdict: "lead",  description: "specific evidence" },
-          { dimension: "pricing",    verdict: "lag",   description: "specific evidence" },
-          { dimension: "perception", verdict: "equal", description: "specific evidence" },
-          { dimension: "leadership", verdict: "lead",  description: "specific evidence" },
-        ],
-      },
-    ],
-    sources: [{ url: "https://...", title: "..." }],
-  },
-  tam: {
-    // Headline TAM range — bottom-up. Numbers are USD; the formatter
-    // renders "$X.XB" / "$XM" automatically.
-    headline: { low: 8_000_000_000, high: 18_000_000_000 },
-    // 1–2 paragraph analysis — how you got there, the structural
-    // assumptions, what would expand or compress the range.
-    analysis:
-      "1-2 paragraphs explaining the bottom-up build, assumptions, and what would expand/contract the range.",
-    enterprise: {
-      description:
-        "1-2 sentences: who the enterprise buyer is, why they buy, what motion reaches them.",
-      avgAcv: 250_000, // representative ACV
-      buyerCount: 4_000, // addressable buyers in the segment
-    },
-    midMarket: {
-      description:
-        "1-2 sentences: who the mid-market buyer is, why they buy, what motion reaches them.",
-      avgAcv: 35_000,
-      buyerCount: 60_000,
-    },
-    // Sensitivity table — rows are ACV options, columns are buyer-count
-    // options. Cells are computed (ACV × buyers) automatically.
-    sensitivity: {
-      acvs: [25_000, 75_000, 150_000, 300_000, 600_000],
-      buyerCounts: [500, 2_500, 10_000, 25_000, 75_000],
-    },
-    sources: [{ url: "https://...", title: "..." }],
-  },
-  thesis: {
-    bullCase: [
-      "3-5 punchy bullets. Each one a specific reason the deal could 10x. Concrete metric, customer, or moat — not 'large TAM'.",
-    ],
-    bearCase: [
-      "3-5 punchy bullets. The pushback a sharp partner would actually voice. Specific. Naming names if relevant.",
-    ],
-    keyRisks: [
-      "3-5 bullets. Distinct from bear case — these are operational, regulatory, market, or execution risks that could materialize regardless of thesis.",
-    ],
-  },
-  diligence: {
-    priorities: [
-      // 4-6 entries. Each a specific area to harden in DD with one or two
-      // example questions or asks the partner would put on the team.
-      {
-        area: "Net revenue retention",
-        why: "Public commentary suggests strength but no disclosed number; gross retention vs net unclear.",
-        asks: [
-          "Cohort NRR by segment for last 8 quarters",
-          "Top-10 customer concentration and churn risk in those accounts",
-        ],
-      },
-    ],
-  },
-  // Tab B content. STARTS AS null. Populated only after the user shares
-  // diligence artifacts (deck, financial model, customer references,
-  // investor memo, etc.) and Claude re-emits the artifact.
-  diligenceInsights: null,
-  // When populated, the shape is:
-  // diligenceInsights: {
-  //   artifactsAnalyzed: ["Series B deck (PDF)", "Financial model (XLSX)", ...],
-  //   summary: "1-2 paragraph eloquent synthesis of what the new info changes about our view.",
-  //   keyTakeaways: ["bullet 1", "bullet 2", ...],
-  //   updatedQuestions: [{ area, why, asks: [string] }, ...],
-  //   updatedFlags: [{ title, description }, ...],          // any new red flags surfaced
-  //   updatedBullCase: ["bullet 1", "..."],                 // refined bull case in light of new data
-  //   updatedBearCase: ["bullet 1", "..."],                 // refined bear case
-  //   updatedKeyRisks: ["bullet 1", "..."],                 // refined risks
-  //   stillNeed: ["thing 1", "thing 2", ...],                // gaps the new artifacts didn't fill
-  // }
-};
-
-// ============================================================================
-// Style maps + helpers
-// ============================================================================
-
-const CATEGORY_STYLES = {
-  funding: "border-amber-300/30 bg-amber-300/[0.08] text-amber-200",
-  product: "border-cyan-300/30 bg-cyan-300/[0.08] text-cyan-200",
-  people: "border-violet-300/30 bg-violet-300/[0.08] text-violet-200",
-  press: "border-white/15 bg-white/[0.04] text-white/75",
-  other: "border-white/10 bg-white/[0.02] text-white/55",
-};
-
-const VERDICT = {
-  lead:  { chip: "border-emerald-400/30 bg-emerald-400/[0.08] text-emerald-200", label: "Leads",  Icon: ArrowUpRight },
-  lag:   { chip: "border-rose-400/30 bg-rose-400/[0.08] text-rose-200",          label: "Lags",   Icon: ArrowDownRight },
-  equal: { chip: "border-white/15 bg-white/[0.04] text-white/65",                 label: "On par", Icon: Minus },
-};
-
-const DIMENSION_LABEL = { product: "Product", pricing: "Pricing", perception: "Perception", leadership: "Leadership" };
-
-function initialsOf(name) {
-  return name.split(/\s+/).slice(0, 2).map(s => s[0]?.toUpperCase() ?? "").join("");
+```html
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Acme — Pre-Meeting Brief</title>
+<style>
+:root {
+  --bg:#000; --text:rgba(255,255,255,0.92); --t2:rgba(255,255,255,0.65); --t3:rgba(255,255,255,0.45); --t4:rgba(255,255,255,0.30);
+  --border:rgba(255,255,255,0.08); --border2:rgba(255,255,255,0.05);
+  --surface:rgba(255,255,255,0.02); --surface2:rgba(255,255,255,0.04);
+  --violet:#8b5cf6; --cyan:#22d3ee; --amber:#f59e0b;
 }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{background:var(--bg);min-height:100%;color:var(--text);font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased}
+body{padding:2.5rem 1.5rem;position:relative;overflow-x:hidden}
+a{color:inherit}
+ul{list-style:none}
+.container{position:relative;max-width:64rem;margin:0 auto;z-index:1}
 
-function fmtDate(s) {
-  const [y, m, d] = s.split("-").map(Number);
-  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-  if (!m) return s;
-  return d ? `${months[m-1]} ${d}, ${y}` : `${months[m-1]} ${y}`;
-}
+/* Aurora */
+.aurora{position:fixed;inset:-2rem -2rem auto -2rem;height:36rem;pointer-events:none;filter:blur(60px);opacity:.7;z-index:0;
+  background:radial-gradient(ellipse 60% 50% at 20% 0%,rgba(139,92,246,.20),transparent 70%),radial-gradient(ellipse 50% 50% at 80% 10%,rgba(34,211,238,.14),transparent 70%);
+  animation:fadeIn 1200ms ease-out both}
+@keyframes fadeIn{from{opacity:0}to{opacity:.7}}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes ping{0%,100%{transform:scale(1);opacity:.6}75%{transform:scale(2.4);opacity:0}}
 
-function hostOf(url) {
-  try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; }
-}
+/* Hero */
+.hero{display:flex;align-items:flex-end;justify-content:space-between;gap:1.5rem;flex-wrap:wrap;padding-bottom:2.5rem;border-bottom:1px solid var(--border);animation:fadeUp 520ms cubic-bezier(.22,1,.36,1) both}
+.hero-id{display:flex;align-items:center;gap:1.25rem}
+.hero-logo{position:relative;width:4rem;height:4rem;flex-shrink:0}
+.hero-logo-halo{position:absolute;inset:-.5rem;border-radius:1.5rem;background:linear-gradient(135deg,rgba(139,92,246,.30),rgba(34,211,238,.20));filter:blur(20px);opacity:.5}
+.hero-logo-frame{position:relative;width:4rem;height:4rem;border-radius:1rem;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.04);overflow:hidden;display:grid;place-items:center}
+.hero-logo-frame::after{content:'';position:absolute;inset:0;border-radius:1rem;box-shadow:inset 0 0 0 1px rgba(255,255,255,.10);pointer-events:none}
+.hero-logo-frame img{width:100%;height:100%;object-fit:cover;display:block}
+.logo-fallback{width:100%;height:100%;display:grid;place-items:center;background:linear-gradient(135deg,rgba(139,92,246,.30),rgba(34,211,238,.30));color:#fff;font-size:1.125rem;font-weight:500}
+.eyebrow{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.22em;color:var(--t3)}
+.hero-title{margin-top:.375rem;font-size:clamp(2.25rem,6vw,3.75rem);font-weight:500;letter-spacing:-.025em;line-height:1.05;background:linear-gradient(135deg,#fff,rgba(255,255,255,.6));-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero-link{display:inline-flex;align-items:center;gap:.375rem;margin-top:.5rem;font-size:.875rem;color:var(--t2);text-decoration:none;transition:color 200ms}
+.hero-link:hover{color:#fff}
+.hero-link svg{width:12px;height:12px}
+.company-note{margin-top:.75rem;max-width:42rem;font-size:.875rem;color:var(--t2)}
+.as-of{display:inline-flex;align-items:center;gap:.5rem;padding:.25rem .75rem;border-radius:9999px;border:1px solid var(--border);background:var(--surface);font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:var(--t2);align-self:flex-start;backdrop-filter:blur(8px)}
+.pulse{position:relative;display:inline-flex;width:6px;height:6px;flex-shrink:0}
+.pulse::before{content:'';position:absolute;inset:-2px;border-radius:50%;background:rgba(139,92,246,.6);animation:ping 1.6s cubic-bezier(0,0,.2,1) infinite}
+.pulse::after{content:'';position:absolute;inset:0;border-radius:50%;background:var(--violet);box-shadow:0 0 8px rgba(139,92,246,.6)}
 
-function fmtMoney(n) {
-  if (!Number.isFinite(n)) return "—";
-  if (n >= 1_000_000_000) {
-    const v = n / 1_000_000_000;
-    return `$${v >= 10 ? v.toFixed(0) : v.toFixed(1)}B`;
-  }
-  if (n >= 1_000_000) {
-    const v = n / 1_000_000;
-    return `$${v >= 10 ? v.toFixed(0) : v.toFixed(1)}M`;
-  }
-  if (n >= 1_000) return `$${(n / 1_000).toFixed(0)}K`;
-  return `$${n}`;
-}
+/* Tabs (CSS-only via radio inputs) */
+input[name="diliq-tab"]{position:absolute;opacity:0;pointer-events:none}
+.tabs{display:inline-flex;align-items:center;gap:.25rem;margin-top:2rem;padding:.25rem;border-radius:9999px;border:1px solid var(--border);background:var(--surface);backdrop-filter:blur(8px)}
+.tab{display:inline-flex;align-items:center;gap:.5rem;padding:.375rem 1rem;font-size:12px;font-weight:500;letter-spacing:.025em;color:var(--t2);border-radius:9999px;cursor:pointer;transition:all 300ms;user-select:none;border:1px solid transparent}
+.tab:hover{color:rgba(255,255,255,.85)}
+.tab svg{width:14px;height:14px}
+#diliq-tab-overview:checked~.container .tab[for="diliq-tab-overview"],
+#diliq-tab-diligence:checked~.container .tab[for="diliq-tab-diligence"]{
+  background:linear-gradient(to right,rgba(139,92,246,.25),rgba(34,211,238,.20));color:#fff;border-color:rgba(255,255,255,.15);box-shadow:0 0 20px rgba(139,92,246,.18)}
 
-function fmtCount(n) {
-  if (!Number.isFinite(n)) return "—";
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(n >= 10_000 ? 0 : 1)}K`;
-  return `${n}`;
-}
+.diligence-pip{display:none;margin-left:.125rem;width:6px;height:6px;border-radius:50%;background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+.has-insights .tab[for="diliq-tab-diligence"] .diligence-pip{display:inline-block}
+#diliq-tab-diligence:checked~.container .tab[for="diliq-tab-diligence"] .diligence-pip{display:none}
 
-// Resilient logo renderer. Tries the favicon API, falls back to gradient
-// initials on error (broken image, blocked domain, no domain set).
-function CompanyLogo({ name, domain }) {
-  const [errored, setErrored] = useState(false);
-  const initials = initialsOf(name) || "·";
-  const showFallback = !domain || errored;
-  return (
-    <div className="relative h-16 w-16 shrink-0">
-      <div
-        aria-hidden
-        className="absolute -inset-2 rounded-3xl bg-gradient-to-br from-violet-500/30 to-cyan-400/20 opacity-50 blur-xl"
-      />
-      <div className="relative h-16 w-16 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.04]">
-        {showFallback ? (
-          <div className="grid h-full w-full place-items-center bg-gradient-to-br from-violet-500/30 to-cyan-400/30 text-xl font-medium text-white">
-            {initials}
-          </div>
-        ) : (
-          <img
-            src={`https://www.google.com/s2/favicons?domain=${domain}&sz=128`}
-            alt=""
-            referrerPolicy="no-referrer"
-            crossOrigin="anonymous"
-            className="h-full w-full object-cover"
-            onError={() => setErrored(true)}
-          />
-        )}
-        <div className="pointer-events-none absolute inset-0 rounded-2xl ring-1 ring-inset ring-white/10" />
-      </div>
-    </div>
-  );
-}
+/* Tab panes */
+.pane{display:none;margin-top:1.75rem;gap:1.25rem}
+#diliq-tab-overview:checked~.container .pane-overview,
+#diliq-tab-diligence:checked~.container .pane-diligence{display:grid}
 
-// Smaller logo for competitor cards. Same favicon → initials fallback; no
-// halo at this size (too busy).
-function CompetitorLogo({ name, domain }) {
-  const [errored, setErrored] = useState(false);
-  const initials = initialsOf(name) || "·";
-  const showFallback = !domain || errored;
-  return (
-    <div className="relative h-9 w-9 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-white/[0.04]">
-      {showFallback ? (
-        <div className="grid h-full w-full place-items-center bg-gradient-to-br from-violet-500/25 to-cyan-400/25 text-[11px] font-medium text-white/85">
-          {initials}
-        </div>
-      ) : (
-        <img
-          src={`https://www.google.com/s2/favicons?domain=${domain}&sz=64`}
-          alt=""
-          referrerPolicy="no-referrer"
-          crossOrigin="anonymous"
-          className="h-full w-full object-cover"
-          onError={() => setErrored(true)}
-        />
-      )}
-      <div className="pointer-events-none absolute inset-0 rounded-lg ring-1 ring-inset ring-white/10" />
-    </div>
-  );
-}
+/* Cards */
+.card{position:relative;overflow:hidden;padding:1.5rem;border:1px solid var(--border);border-radius:1rem;background:var(--surface);backdrop-filter:blur(8px);transition:border-color 300ms,background 300ms;animation:fadeUp 520ms cubic-bezier(.22,1,.36,1) both;animation-delay:80ms}
+@media (min-width:640px){.card{padding:1.75rem}}
+.card:hover{border-color:rgba(255,255,255,.16);background:rgba(255,255,255,.025)}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(to right,transparent,rgba(255,255,255,.25),transparent);opacity:0;transition:opacity 300ms}
+.card:hover::before{opacity:1}
+.card::after{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(380px circle at 50% 0%,rgba(139,92,246,.10),rgba(34,211,238,.05) 35%,transparent 60%);opacity:0;transition:opacity 300ms}
+.card:hover::after{opacity:1}
+.pane > *:nth-child(1){animation-delay:80ms}
+.pane > *:nth-child(2){animation-delay:160ms}
+.pane > *:nth-child(3){animation-delay:240ms}
+.pane > *:nth-child(4){animation-delay:320ms}
+.pane > *:nth-child(5){animation-delay:400ms}
+.pane > *:nth-child(6){animation-delay:480ms}
+.pane > *:nth-child(7){animation-delay:560ms}
+.pane > *:nth-child(8){animation-delay:640ms}
+.pane > *:nth-child(9){animation-delay:720ms}
+.pane > *:nth-child(10){animation-delay:800ms}
+.card-title{position:relative;display:flex;align-items:center;gap:.5rem;font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.2em;color:var(--t3)}
+.card-body{position:relative;margin-top:1.25rem}
 
-// ============================================================================
-// Animation primitives (no framer-motion required)
-// ============================================================================
+/* Red flags */
+.card-redflag{border-color:rgba(244,63,94,.30);background:linear-gradient(135deg,rgba(76,5,25,.6),rgba(64,7,21,.3),rgba(76,5,25,.6))}
+.card-redflag::before{background:linear-gradient(to right,transparent,rgba(252,165,165,.40),transparent);opacity:1}
+.card-redflag::after{background:radial-gradient(ellipse 60% 80% at 50% 0%,rgba(244,63,94,.30),transparent 70%);opacity:.5}
+.card-redflag .card-title{color:rgba(254,205,211,1)}
+.flag-list{display:grid;gap:1rem}
+.flag-item{display:flex;gap:.75rem}
+.flag-item svg{flex-shrink:0;width:16px;height:16px;margin-top:2px;color:rgba(252,165,165,1)}
+.flag-title{font-size:1rem;font-weight:500;color:rgba(255,228,230,1)}
+.flag-desc{margin-top:.25rem;font-size:.875rem;line-height:1.6;color:rgba(254,205,211,.75)}
 
-const ENTRY_KEYFRAMES = `
-  @keyframes diliqFadeUp {
-    from { opacity: 0; transform: translateY(8px); }
-    to   { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes diliqFadeIn {
-    from { opacity: 0; }
-    to   { opacity: 1; }
-  }
-  @keyframes diliqShimmer {
-    0%   { transform: translateX(-100%); }
-    100% { transform: translateX(100%); }
-  }
-`;
+/* Core thesis */
+.card-thesis{border-color:rgba(255,255,255,.10);background:linear-gradient(135deg,rgba(139,92,246,.06),rgba(255,255,255,.02),rgba(34,211,238,.06));padding:1.75rem}
+@media (min-width:640px){.card-thesis{padding:2.25rem}}
+.card-thesis::before{opacity:1}
+.card-thesis::after{background:radial-gradient(ellipse 60% 80% at 50% 0%,rgba(139,92,246,.20),rgba(34,211,238,.10) 60%,transparent 80%);opacity:.6}
+.thesis-title{color:rgba(255,255,255,.55)}
+.thesis-title svg{color:rgba(196,181,253,1);width:14px;height:14px}
+.thesis-text{margin-top:1.25rem;font-size:clamp(1.5rem,3vw,1.875rem);font-weight:500;line-height:1.35;letter-spacing:-.015em;background:linear-gradient(135deg,#fff,rgba(255,255,255,.65));-webkit-background-clip:text;background-clip:text;color:transparent}
 
-function FadeUp({ children, delay = 0, className = "" }) {
-  return (
-    <div
-      className={className}
-      style={{
-        animation: "diliqFadeUp 520ms cubic-bezier(0.22,1,0.36,1) both",
-        animationDelay: `${delay}ms`,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
+/* What */
+.tagline{font-size:1.5rem;font-weight:500;line-height:1.3;letter-spacing:-.015em;color:#fff}
+.summary{margin-top:1.25rem;font-size:1rem;line-height:1.6;color:rgba(255,255,255,.80)}
+.how-it-works{margin-top:1rem;font-size:.875rem;line-height:1.65;color:var(--t2)}
 
-// Card with cursor-following violet/cyan glow + top edge highlight on hover
-function GlowCard({ title, accent, children, delay = 0 }) {
-  const ref = useRef(null);
-  const [pos, setPos] = useState({ x: -200, y: -200, active: false });
-  return (
-    <FadeUp delay={delay}>
-      <div
-        ref={ref}
-        onMouseMove={(e) => {
-          const r = e.currentTarget.getBoundingClientRect();
-          setPos({ x: e.clientX - r.left, y: e.clientY - r.top, active: true });
-        }}
-        onMouseLeave={() => setPos((p) => ({ ...p, active: false }))}
-        className="group relative overflow-hidden rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur transition-colors duration-300 hover:border-white/[0.16]"
-      >
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 transition-opacity duration-300"
-          style={{
-            opacity: pos.active ? 1 : 0,
-            background: `radial-gradient(380px circle at ${pos.x}px ${pos.y}px, rgba(139,92,246,0.14), rgba(34,211,238,0.06) 35%, transparent 60%)`,
-          }}
-        />
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-        />
-        <div className="relative p-6 sm:p-7">
-          <div className="flex items-center gap-2">
-            {accent && <span className="h-1.5 w-1.5 rounded-full" style={{ background: accent, boxShadow: `0 0 8px ${accent}` }} />}
-            <h2 className="text-[11px] font-medium uppercase tracking-[0.2em] text-white/40">{title}</h2>
-          </div>
-          <div className="mt-5">{children}</div>
+/* Sources */
+.sources{margin-top:1.5rem;padding-top:1rem;border-top:1px solid var(--border2)}
+.sources-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.18em;color:rgba(255,255,255,.35)}
+.sources-list{display:flex;flex-wrap:wrap;gap:.25rem 1rem;margin-top:.5rem}
+.sources-list a{font-size:12px;color:rgba(255,255,255,.50);text-decoration:none;transition:color 200ms}
+.sources-list a:hover{color:rgba(255,255,255,.85)}
+
+/* Founders */
+.founders{display:grid}
+.founder{display:grid;gap:.75rem;padding:1.25rem 0;border-top:1px solid var(--border2)}
+.founder:first-child{padding-top:0;border-top:0}
+.founder:last-child{padding-bottom:0}
+@media (min-width:640px){.founder{grid-template-columns:minmax(220px,1fr) 2fr;gap:1.5rem}}
+.founder-id{display:flex;align-items:center;gap:.75rem;min-width:0}
+.founder-avatar{width:2.5rem;height:2.5rem;flex-shrink:0;display:grid;place-items:center;border-radius:50%;border:1px solid rgba(255,255,255,.10);background:linear-gradient(135deg,rgba(139,92,246,.25),rgba(34,211,238,.20));font-size:11px;font-weight:500;color:rgba(255,255,255,.85)}
+.founder-meta{min-width:0}
+.founder-name-row{display:flex;align-items:center;gap:.375rem}
+.founder-name{font-weight:500;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.linkedin-link{flex-shrink:0;color:rgba(255,255,255,.40);transition:color 200ms;display:inline-flex}
+.linkedin-link:hover{color:#0a66c2}
+.linkedin-link svg{width:14px;height:14px}
+.founder-role{font-size:.875rem;color:rgba(255,255,255,.50);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.founder-bg{font-size:.875rem;line-height:1.6;color:rgba(255,255,255,.75)}
+.notable-signal{display:inline-flex;align-items:center;gap:.375rem;margin-top:.5rem;padding:.125rem .625rem;border-radius:9999px;border:1px solid rgba(252,211,77,.25);background:rgba(252,211,77,.06);font-size:11px;color:rgba(254,243,199,.95)}
+.notable-dot{width:4px;height:4px;border-radius:50%;background:#fcd34d;box-shadow:0 0 6px var(--amber)}
+
+/* News */
+.news,.tl{margin:0 -.5rem}
+.news-item,.tl-item{padding:1rem .5rem;border-top:1px solid var(--border2);border-radius:.5rem;transition:background 200ms}
+.news-item:first-child,.tl-item:first-child{padding-top:0;border-top:0}
+.news-item:last-child,.tl-item:last-child{padding-bottom:0}
+.news-item:hover,.tl-item:hover{background:rgba(255,255,255,.015)}
+.item-meta{display:flex;flex-wrap:wrap;align-items:center;gap:.5rem;font-size:12px;color:rgba(255,255,255,.50)}
+.tabular{font-variant-numeric:tabular-nums}
+.dot-sep{color:rgba(255,255,255,.25)}
+.cat{padding:0 .5rem;border-radius:9999px;border:1px solid;font-size:10px;text-transform:uppercase;letter-spacing:.05em;line-height:1.6}
+.cat-funding{border-color:rgba(252,211,77,.30);background:rgba(252,211,77,.08);color:rgba(254,243,199,1)}
+.cat-product{border-color:rgba(103,232,249,.30);background:rgba(103,232,249,.08);color:rgba(207,250,254,1)}
+.cat-people{border-color:rgba(196,181,253,.30);background:rgba(196,181,253,.08);color:rgba(237,233,254,1)}
+.cat-press{border-color:rgba(255,255,255,.15);background:rgba(255,255,255,.04);color:rgba(255,255,255,.75)}
+.cat-other{border-color:rgba(255,255,255,.10);background:rgba(255,255,255,.02);color:rgba(255,255,255,.55)}
+.item-title{display:inline-flex;align-items:flex-start;gap:.375rem;margin-top:.5rem;font-size:1rem;font-weight:500;line-height:1.35;color:#fff;text-decoration:none;transition:color 200ms}
+.item-title:hover{color:rgba(255,255,255,.85)}
+.item-title svg{width:14px;height:14px;margin-top:3px;flex-shrink:0;opacity:.4}
+.item-summary{margin-top:.375rem;font-size:.875rem;line-height:1.6;color:rgba(255,255,255,.70)}
+
+/* Thought leadership */
+.tl-author{display:inline-flex;align-items:center;gap:.375rem;padding:.125rem .625rem;border-radius:9999px;border:1px solid rgba(196,181,253,.25);background:rgba(196,181,253,.06);color:rgba(237,233,254,.95);font-size:11px}
+.tl-author svg{width:12px;height:12px;color:rgba(196,181,253,1)}
+
+/* Competitors */
+.market-summary{font-size:.875rem;line-height:1.6;color:rgba(255,255,255,.70)}
+.competitors{margin-top:1.5rem;display:grid;gap:1rem}
+.comp{padding:1.25rem;border:1px solid rgba(255,255,255,.07);border-radius:.75rem;background:rgba(255,255,255,.015);transition:all 300ms}
+.comp:hover{border-color:rgba(255,255,255,.14);background:rgba(255,255,255,.025)}
+.comp-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem}
+.comp-id{display:flex;align-items:center;gap:.625rem;min-width:0}
+.comp-logo{width:2.25rem;height:2.25rem;flex-shrink:0;border-radius:.5rem;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.04);overflow:hidden;display:grid;place-items:center;position:relative}
+.comp-logo::after{content:'';position:absolute;inset:0;border-radius:.5rem;box-shadow:inset 0 0 0 1px rgba(255,255,255,.10);pointer-events:none}
+.comp-logo img{width:100%;height:100%;object-fit:cover;display:block}
+.comp-logo .logo-fallback{font-size:11px}
+.comp-name{font-size:1rem;font-weight:500;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.comp-domain{font-family:ui-monospace,'SF Mono',Menlo,monospace;font-size:11px;color:var(--t4)}
+.comp-tagline{margin-top:.5rem;font-size:.875rem;line-height:1.6;color:rgba(255,255,255,.60)}
+.scoreline{display:flex;flex-wrap:wrap;align-items:center;gap:.375rem .75rem;margin-top:1rem;padding:.5rem .75rem;border:1px solid var(--border2);background:rgba(0,0,0,.20);border-radius:.5rem;font-size:11px}
+.scoreline-label{font-family:ui-monospace,'SF Mono',Menlo,monospace;text-transform:uppercase;letter-spacing:.16em;color:var(--t3)}
+.score-pip{display:inline-flex;align-items:center;gap:.25rem}
+.score-pip svg{width:12px;height:12px}
+.score-pip.lead{color:rgba(167,243,208,1)}
+.score-pip.lag{color:rgba(254,205,211,1)}
+.score-pip.equal{color:rgba(255,255,255,.55)}
+.score-pip-count{font-family:ui-monospace,monospace;font-variant-numeric:tabular-nums}
+.score-pip-text{color:var(--t2)}
+.score-pip.equal .score-pip-text{color:rgba(255,255,255,.55)}
+.chips{display:grid;gap:.625rem;margin-top:.75rem}
+@media (min-width:640px){.chips{grid-template-columns:repeat(2,1fr)}}
+.chip{padding:.75rem;border:1px solid var(--border2);border-radius:.5rem;background:rgba(0,0,0,.30)}
+.chip-head{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:.25rem .5rem}
+.chip-dim{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.18em;color:var(--t3)}
+.chip-verdict{display:inline-flex;align-items:center;gap:.25rem;max-width:100%;padding:.125rem .5rem;border-radius:9999px;border:1px solid;font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.05em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chip-verdict svg{width:12px;height:12px;flex-shrink:0}
+.chip-verdict.lead{border-color:rgba(110,231,183,.30);background:rgba(110,231,183,.08);color:rgba(167,243,208,1)}
+.chip-verdict.lag{border-color:rgba(251,113,133,.30);background:rgba(251,113,133,.08);color:rgba(254,205,211,1)}
+.chip-verdict.equal{border-color:rgba(255,255,255,.15);background:rgba(255,255,255,.04);color:rgba(255,255,255,.65)}
+.chip-winner{font-weight:600}
+.chip-leads{opacity:.7}
+.chip-evidence{margin-top:.5rem;font-size:12px;line-height:1.6;color:var(--t2)}
+
+/* TAM */
+.tam-head{display:flex;flex-wrap:wrap;align-items:baseline;justify-content:space-between;gap:1rem}
+.tam-head-label{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.2em;color:var(--t3)}
+.tam-num{margin-top:.5rem;font-size:clamp(1.75rem,4vw,2.25rem);font-weight:500;letter-spacing:-.02em;background:linear-gradient(to right,rgba(196,181,253,1),#fff,rgba(165,243,252,1));-webkit-background-clip:text;background-clip:text;color:transparent}
+.tam-method{display:inline-flex;align-items:center;gap:.375rem;padding:.25rem .75rem;border-radius:9999px;border:1px solid var(--border);background:var(--surface);font-size:11px;color:var(--t2);align-self:flex-start}
+.tam-method svg{width:12px;height:12px}
+.tam-analysis{margin-top:1.25rem;font-size:.875rem;line-height:1.65;color:rgba(255,255,255,.75)}
+.segments{display:grid;gap:1rem;margin-top:1.5rem}
+@media (min-width:640px){.segments{grid-template-columns:repeat(2,1fr)}}
+.seg{padding:1.25rem;border-radius:.75rem;border:1px solid}
+.seg-ent{border-color:rgba(196,181,253,.15);background:rgba(196,181,253,.03)}
+.seg-mid{border-color:rgba(103,232,249,.15);background:rgba(103,232,249,.03)}
+.seg-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.18em}
+.seg-ent .seg-label{color:rgba(196,181,253,.85)}
+.seg-mid .seg-label{color:rgba(103,232,249,.85)}
+.seg-desc{margin-top:.75rem;font-size:.875rem;line-height:1.6;color:rgba(255,255,255,.75)}
+.seg-stats{display:grid;grid-template-columns:1fr 1fr;gap:.5rem;margin-top:1rem;font-size:12px}
+.seg-stat-label{color:var(--t3)}
+.seg-stat-val{margin-top:.125rem;font-family:ui-monospace,monospace;font-size:1rem;color:#fff}
+.seg-implied{margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--border2);font-size:12px;color:rgba(255,255,255,.5)}
+.seg-implied-num{font-family:ui-monospace,monospace;color:rgba(255,255,255,.85)}
+.sens{margin-top:1.75rem}
+.sens-label{font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.18em;color:var(--t3)}
+.sens-wrap{margin-top:.75rem;border:1px solid var(--border);border-radius:.75rem;overflow:hidden}
+.sens-table{width:100%;border-collapse:collapse;font-size:12px;table-layout:fixed}
+.sens-table thead{background:rgba(255,255,255,.03)}
+.sens-table th,.sens-table td{padding:.5rem .75rem}
+.sens-table th{text-align:right;font-family:ui-monospace,monospace;color:rgba(255,255,255,.65);font-weight:500}
+.sens-table th.col-label{text-align:left;color:var(--t3);text-transform:uppercase;letter-spacing:.05em;font-family:inherit}
+.sens-table tbody tr:nth-child(even){background:rgba(255,255,255,.01)}
+.sens-table tbody th{text-align:left}
+.sens-table td{text-align:right;font-family:ui-monospace,monospace;font-variant-numeric:tabular-nums;color:rgba(255,255,255,.85)}
+.sens-note{margin-top:.5rem;font-size:11px;color:rgba(255,255,255,.35)}
+
+/* Bull/bear/risks */
+.bb-grid{display:grid;gap:1.25rem}
+@media (min-width:640px){.bb-grid{grid-template-columns:repeat(2,1fr)}}
+.bb{padding:1.25rem;border-radius:.75rem;border:1px solid}
+.bb-bull{border-color:rgba(110,231,183,.15);background:rgba(110,231,183,.03)}
+.bb-bear{border-color:rgba(251,113,133,.15);background:rgba(251,113,133,.03)}
+.bb-risk{border-color:rgba(252,211,77,.15);background:rgba(252,211,77,.03);margin-top:1.25rem}
+.bb-head{display:flex;align-items:center;gap:.5rem}
+.bb-head svg{width:16px;height:16px}
+.bb-bull .bb-head{color:rgba(167,243,208,1)}
+.bb-bear .bb-head{color:rgba(254,205,211,1)}
+.bb-risk .bb-head{color:rgba(254,243,199,1)}
+.bb-head-label{font-size:11px;font-weight:500;text-transform:uppercase;letter-spacing:.2em}
+.bb-list{margin-top:1rem;display:grid;gap:.625rem}
+.bb-list li{display:flex;gap:.75rem;font-size:.875rem;line-height:1.6;color:rgba(255,255,255,.80)}
+.bb-list svg{flex-shrink:0;width:14px;height:14px;margin-top:3px}
+.bb-bull .bb-list svg{color:rgba(110,231,183,1)}
+.bb-bear .bb-list svg{color:rgba(251,113,133,1)}
+.bb-risk .bb-list svg{color:rgba(252,211,77,1)}
+
+/* Diligence priorities */
+.dil-intro{font-size:.875rem;line-height:1.6;color:var(--t2)}
+.dil-list{margin-top:1.25rem;display:grid;gap:1rem}
+.dil-item{padding:1.25rem;border:1px solid rgba(255,255,255,.07);border-radius:.75rem;background:rgba(255,255,255,.015)}
+.dil-row{display:flex;align-items:flex-start;gap:.75rem}
+.dil-num{width:1.5rem;height:1.5rem;flex-shrink:0;margin-top:.25rem;display:inline-flex;align-items:center;justify-content:center;border-radius:50%;background:rgba(34,211,238,.12);color:rgba(165,243,252,1);font-size:11px;font-weight:500;font-family:ui-monospace,monospace}
+.dil-area{font-size:1rem;font-weight:500;color:#fff}
+.dil-why{margin-top:.25rem;font-size:.875rem;line-height:1.6;color:var(--t2)}
+.dil-asks{margin-top:.75rem;display:grid;gap:.375rem}
+.dil-asks li{display:flex;gap:.5rem;font-size:.875rem;color:rgba(255,255,255,.75)}
+.dil-asks svg{flex-shrink:0;width:14px;height:14px;margin-top:3px;color:rgba(165,243,252,.7)}
+
+/* Diligence empty state */
+.dil-empty{position:relative;overflow:hidden;padding:3rem 1.5rem;border:1px dashed rgba(255,255,255,.10);border-radius:1rem;background:rgba(255,255,255,.015);text-align:center}
+.dil-empty::before{content:'';position:absolute;left:-3rem;right:-3rem;top:-6rem;height:12rem;pointer-events:none;filter:blur(60px);opacity:.4;background:radial-gradient(ellipse 60% 80% at 50% 0%,rgba(34,211,238,.20),transparent 70%)}
+.dil-empty-icon{position:relative;display:inline-grid;place-items:center;width:3rem;height:3rem;border-radius:.75rem;border:1px solid rgba(255,255,255,.10);background:rgba(255,255,255,.03);color:rgba(165,243,252,.80)}
+.dil-empty-icon svg{width:20px;height:20px}
+.dil-empty-title{position:relative;margin-top:1.25rem;font-size:1rem;font-weight:500;color:rgba(255,255,255,.85)}
+.dil-empty-body{position:relative;margin:.5rem auto 0;max-width:30rem;font-size:.875rem;line-height:1.6;color:var(--t2)}
+
+/* Footer */
+footer{margin-top:4rem;padding-top:1.5rem;border-top:1px solid var(--border2);text-align:center;font-size:12px;color:rgba(255,255,255,.30)}
+
+/* Inline icons */
+.icon{display:inline-block;vertical-align:-2px}
+
+/* Logo broken-image fallback wiring */
+.hero-logo-frame img.broken,.comp-logo img.broken{display:none}
+.logo-fallback{display:none}
+.hero-logo-frame img.broken+.logo-fallback,.comp-logo img.broken+.logo-fallback{display:grid}
+.no-domain .logo-fallback{display:grid}
+</style>
+</head>
+<body>
+
+<!-- Tab radio inputs (CSS-only tabs; live BEFORE the container so sibling selectors work) -->
+<input type="radio" name="diliq-tab" id="diliq-tab-overview" checked>
+<input type="radio" name="diliq-tab" id="diliq-tab-diligence">
+
+<div class="aurora" aria-hidden="true"></div>
+
+<main class="container">
+
+  <!-- ============================================================ HERO -->
+  <header class="hero">
+    <div class="hero-id">
+      <div class="hero-logo">
+        <div class="hero-logo-halo"></div>
+        <div class="hero-logo-frame">
+          <!-- If no domain, add class="no-domain" to .hero-logo-frame and remove the <img>. -->
+          <img src="https://www.google.com/s2/favicons?domain=acme.com&sz=128" alt="" referrerpolicy="no-referrer" onerror="this.classList.add('broken')">
+          <div class="logo-fallback">AC</div>
         </div>
       </div>
-    </FadeUp>
-  );
-}
-
-function SourceList({ sources }) {
-  if (!sources?.length) return null;
-  return (
-    <div className="mt-6 border-t border-white/[0.06] pt-4">
-      <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-white/35">Sources</p>
-      <ul className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
-        {sources.map((s, i) => (
-          <li key={i}>
-            <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-xs text-white/50 transition hover:text-white/85">
-              {s.title || hostOf(s.url)}
-            </a>
-          </li>
-        ))}
-      </ul>
+      <div>
+        <p class="eyebrow">Pre-meeting brief</p>
+        <h1 class="hero-title">Acme</h1>
+        <a class="hero-link" href="https://acme.com" target="_blank" rel="noopener noreferrer">acme.com
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+        </a>
+        <!-- Optional disambiguation note. Delete this <p> if not needed. -->
+        <p class="company-note">Apollo (Apollo.io — sales engagement); chose this over Apollo GraphQL given the VC context.</p>
+      </div>
     </div>
-  );
-}
+    <span class="as-of">
+      <span class="pulse"></span>
+      as of Apr 26, 2026
+    </span>
+  </header>
 
-function BulletList({ items, accentColor, Icon }) {
-  return (
-    <ul className="space-y-2.5">
-      {items.map((b, i) => (
-        <li key={i} className="flex gap-3 text-sm leading-relaxed text-white/80">
-          {Icon && (
-            <Icon className="mt-0.5 h-4 w-4 shrink-0" style={{ color: accentColor }} />
-          )}
-          <span>{b}</span>
+  <!-- ============================================================ TABS -->
+  <nav class="tabs" aria-label="Brief sections">
+    <label class="tab" for="diliq-tab-overview">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>
+      Company Overview
+    </label>
+    <label class="tab" for="diliq-tab-diligence">
+      <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>
+      Diligence Insights
+      <span class="diligence-pip" aria-hidden="true"></span>
+    </label>
+  </nav>
+
+  <!-- ============================================================ COMPANY OVERVIEW PANE -->
+  <section class="pane pane-overview">
+
+    <!-- Red flags (OMIT this entire <section> when there are no MAJOR red flags) -->
+    <section class="card card-redflag">
+      <div class="card-title">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/></svg>
+        Red flags
+      </div>
+      <ul class="card-body flag-list">
+        <li class="flag-item">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+          <div>
+            <div class="flag-title">DOJ inquiry opened Feb 2026</div>
+            <div class="flag-desc">Reuters reports an antitrust review of Acme's pricing practices in mid-market accounts; subpoenas issued to two largest customers.</div>
+          </div>
         </li>
-      ))}
-    </ul>
-  );
-}
+      </ul>
+    </section>
 
-// ============================================================================
-// Main component
-// ============================================================================
+    <!-- Core thesis -->
+    <section class="card card-thesis">
+      <div class="card-title thesis-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/></svg>
+        Core thesis
+      </div>
+      <p class="thesis-text">Acme is the only vendor in the workflow-automation category that owns both the runtime and the IDE — every other player is one or the other. That ownership lets them collect the proprietary execution traces that compound into a structural moat as agentic workloads scale. We're betting on a 3-year window before incumbents stitch the two halves together.</p>
+    </section>
 
-function TabBar({ active, onChange, hasInsights }) {
-  const tabs = [
-    { id: "overview", label: "Company Overview", Icon: Layers },
-    { id: "diligence", label: "Diligence Insights", Icon: FileText },
-  ];
-  return (
-    <div className="mt-8 inline-flex items-center gap-1 rounded-full border border-white/[0.08] bg-white/[0.02] p-1 backdrop-blur">
-      {tabs.map(({ id, label, Icon }) => {
-        const isActive = active === id;
-        const showDot = id === "diligence" && hasInsights && !isActive;
-        return (
-          <button
-            key={id}
-            type="button"
-            onClick={() => onChange(id)}
-            className={`relative inline-flex items-center gap-2 rounded-full px-4 py-1.5 text-xs font-medium tracking-wide transition-all duration-300 ${
-              isActive
-                ? "bg-gradient-to-r from-violet-500/25 to-cyan-400/20 text-white shadow-[0_0_20px_rgba(139,92,246,0.18)] ring-1 ring-inset ring-white/15"
-                : "text-white/55 hover:text-white/85"
-            }`}
-          >
-            <Icon className="h-3.5 w-3.5" />
-            <span>{label}</span>
-            {showDot && (
-              <span className="ml-0.5 inline-flex h-1.5 w-1.5 rounded-full bg-cyan-400 shadow-[0_0_8px_rgb(34,211,238)]" />
-            )}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function DiligenceEmptyState() {
-  return (
-    <FadeUp delay={80}>
-      <div className="relative overflow-hidden rounded-2xl border border-dashed border-white/[0.10] bg-white/[0.015] p-12 text-center backdrop-blur">
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -inset-x-12 -top-24 h-48 opacity-40 blur-3xl"
-          style={{
-            background:
-              "radial-gradient(ellipse 60% 80% at 50% 0%, rgba(34,211,238,0.18), transparent 70%)",
-          }}
-        />
-        <div className="relative">
-          <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.03]">
-            <FileText className="h-5 w-5 text-cyan-300/80" />
-          </div>
-          <p className="mt-5 text-base font-medium text-white/85">
-            Share key diligence artifacts and data with Claude to activate this tab.
-          </p>
-          <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-white/55">
-            Drop in the data room deck, financial model, customer references,
-            cohort data, investor memo — anything you'd review before a term
-            sheet. Claude reads it, then refreshes this tab with takeaways,
-            updated questions, flags, and a refined thesis.
-          </p>
+    <!-- What -->
+    <section class="card">
+      <div class="card-title">What they do</div>
+      <div class="card-body">
+        <p class="tagline">Acme runs and observes long-running AI agent workflows for enterprise customers.</p>
+        <p class="summary">Founded by ex-Stripe infra engineers, Acme handles the operational pain of putting agentic AI into production: durable execution, replay, observability, and human-in-the-loop checkpoints. Customers are platform teams at Fortune 500s who tried homegrown LangChain stacks and hit reliability ceilings.</p>
+        <p class="how-it-works">The core is a workflow engine (open-source, Apache-2) plus a managed cloud that adds traces, eval harness, and SOC 2 compliance. Pricing is consumption-based on workflow steps with enterprise tiers gated on SLAs. Key differentiator: the runtime serializes every model call and tool result so any failure can be replayed deterministically from any step — Temporal-for-LLMs without the framework lock-in.</p>
+        <div class="sources">
+          <div class="sources-label">Sources</div>
+          <ul class="sources-list">
+            <li><a href="https://acme.com" target="_blank" rel="noopener noreferrer">acme.com</a></li>
+            <li><a href="https://github.com/acme/runtime" target="_blank" rel="noopener noreferrer">GitHub - acme/runtime</a></li>
+          </ul>
         </div>
       </div>
-    </FadeUp>
-  );
-}
+    </section>
 
-function DiligenceInsightsContent({ insights }) {
-  return (
-    <>
-      {insights.artifactsAnalyzed?.length > 0 && (
-        <FadeUp delay={40}>
-          <div className="rounded-2xl border border-white/[0.07] bg-white/[0.02] p-5 backdrop-blur">
-            <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-white/40">Artifacts analyzed</p>
-            <ul className="mt-3 flex flex-wrap gap-2">
-              {insights.artifactsAnalyzed.map((a, i) => (
-                <li
-                  key={i}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.03] px-3 py-1 text-xs text-white/70"
-                >
-                  <FileText className="h-3 w-3 text-cyan-300/80" />
-                  {a}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </FadeUp>
-      )}
-
-      {insights.summary && (
-        <FadeUp delay={100}>
-          <div className="relative overflow-hidden rounded-2xl border border-white/[0.10] bg-gradient-to-br from-cyan-500/[0.05] via-white/[0.02] to-violet-500/[0.05] p-7 backdrop-blur">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -inset-x-12 -top-24 h-48 opacity-50 blur-3xl"
-              style={{
-                background:
-                  "radial-gradient(ellipse 60% 80% at 50% 0%, rgba(34,211,238,0.18), rgba(139,92,246,0.10) 60%, transparent 80%)",
-              }}
-            />
-            <div className="relative">
-              <div className="flex items-center gap-2 text-cyan-200">
-                <Quote className="h-3.5 w-3.5" />
-                <p className="text-[11px] font-medium uppercase tracking-[0.2em]">Synthesis</p>
+    <!-- Founders -->
+    <section class="card">
+      <div class="card-title">Founders & key people</div>
+      <ul class="card-body founders">
+        <li class="founder">
+          <div class="founder-id">
+            <div class="founder-avatar">JD</div>
+            <div class="founder-meta">
+              <div class="founder-name-row">
+                <span class="founder-name">Jane Doe</span>
+                <a class="linkedin-link" href="https://www.linkedin.com/in/janedoe" target="_blank" rel="noopener noreferrer" aria-label="Jane Doe on LinkedIn">
+                  <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.45 20.45h-3.55v-5.57c0-1.33-.03-3.04-1.85-3.04-1.85 0-2.14 1.45-2.14 2.94v5.67H9.36V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.46v6.28zM5.34 7.43a2.06 2.06 0 1 1 0-4.12 2.06 2.06 0 0 1 0 4.12zM7.12 20.45H3.56V9h3.56v11.45zM22.22 0H1.77C.79 0 0 .77 0 1.72v20.55C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.73V1.72C24 .77 23.2 0 22.22 0z"/></svg>
+                </a>
               </div>
-              <p className="mt-4 text-base leading-relaxed text-white/85">{insights.summary}</p>
+              <div class="founder-role">Co-founder & CEO</div>
             </div>
           </div>
-        </FadeUp>
-      )}
-
-      {insights.keyTakeaways?.length > 0 && (
-        <GlowCard title="Key takeaways" delay={160}>
-          <BulletList items={insights.keyTakeaways} accentColor="rgb(167,139,250)" Icon={Sparkles} />
-        </GlowCard>
-      )}
-
-      {insights.updatedFlags?.length > 0 && (
-        <FadeUp delay={220}>
-          <div className="relative overflow-hidden rounded-2xl border border-rose-500/30 bg-gradient-to-br from-rose-950/60 via-rose-900/30 to-rose-950/60 p-6 sm:p-7 backdrop-blur">
-            <div
-              aria-hidden
-              className="pointer-events-none absolute -inset-x-12 -top-24 h-48 opacity-50 blur-3xl"
-              style={{
-                background:
-                  "radial-gradient(ellipse 60% 80% at 50% 0%, rgba(244,63,94,0.30), transparent 70%)",
-              }}
-            />
-            <div className="relative">
-              <div className="flex items-center gap-2 text-rose-200">
-                <Flag className="h-4 w-4" />
-                <p className="text-[11px] font-medium uppercase tracking-[0.2em]">New flags from data</p>
-              </div>
-              <ul className="mt-5 space-y-4">
-                {insights.updatedFlags.map((rf, i) => (
-                  <li key={i} className="flex gap-3">
-                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-300" />
-                    <div className="min-w-0">
-                      <p className="text-base font-medium text-rose-50">{rf.title}</p>
-                      <p className="mt-1 text-sm leading-relaxed text-rose-100/75">{rf.description}</p>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </div>
+          <div class="founder-bg">
+            Previously led payments infrastructure at Stripe (engineering #15); built the Connect platform from zero to $30B GMV.
+            <span class="notable-signal"><span class="notable-dot"></span>Forbes 30 Under 30 — Enterprise Tech, 2023</span>
           </div>
-        </FadeUp>
-      )}
+        </li>
+      </ul>
+    </section>
 
-      {(insights.updatedBullCase?.length > 0 ||
-        insights.updatedBearCase?.length > 0 ||
-        insights.updatedKeyRisks?.length > 0) && (
-        <GlowCard title="Updated thesis" delay={280}>
-          <p className="text-xs text-white/45">
-            Refined in light of the new artifacts. Where the original brief and the data conflict, this view trusts the data.
-          </p>
-          {(insights.updatedBullCase?.length > 0 || insights.updatedBearCase?.length > 0) && (
-            <div className="mt-5 grid gap-5 sm:grid-cols-2">
-              {insights.updatedBullCase?.length > 0 && (
-                <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.03] p-5">
-                  <div className="flex items-center gap-2 text-emerald-200">
-                    <TrendingUp className="h-4 w-4" />
-                    <p className="text-[11px] font-medium uppercase tracking-[0.2em]">Bull case</p>
-                  </div>
-                  <div className="mt-4">
-                    <BulletList items={insights.updatedBullCase} accentColor="rgb(110,231,183)" Icon={ArrowUpRight} />
-                  </div>
-                </div>
-              )}
-              {insights.updatedBearCase?.length > 0 && (
-                <div className="rounded-xl border border-rose-400/15 bg-rose-400/[0.03] p-5">
-                  <div className="flex items-center gap-2 text-rose-200">
-                    <TrendingDown className="h-4 w-4" />
-                    <p className="text-[11px] font-medium uppercase tracking-[0.2em]">Bear case</p>
-                  </div>
-                  <div className="mt-4">
-                    <BulletList items={insights.updatedBearCase} accentColor="rgb(251,113,133)" Icon={ArrowDownRight} />
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-          {insights.updatedKeyRisks?.length > 0 && (
-            <div className="mt-5 rounded-xl border border-amber-300/15 bg-amber-300/[0.03] p-5">
-              <div className="flex items-center gap-2 text-amber-200">
-                <AlertTriangle className="h-4 w-4" />
-                <p className="text-[11px] font-medium uppercase tracking-[0.2em]">Key risks</p>
+    <!-- News -->
+    <section class="card">
+      <div class="card-title">Recent news</div>
+      <ul class="card-body news">
+        <li class="news-item">
+          <div class="item-meta">
+            <span class="tabular">Mar 12, 2026</span>
+            <span class="cat cat-funding">funding</span>
+            <span class="dot-sep">·</span>
+            <span>The Information</span>
+            <span>theinformation.com</span>
+          </div>
+          <a class="item-title" href="https://www.theinformation.com/articles/acme-series-c" target="_blank" rel="noopener noreferrer">
+            Acme raises $180M Series C led by Sequoia at $1.4B valuation
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+          </a>
+          <p class="item-summary">3.2x markup from the Series B 14 months ago; Sequoia's Sonya Huang led; existing investors Index and Greylock both followed at full pro-rata.</p>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Thought leadership -->
+    <section class="card">
+      <div class="card-title">Thought leadership</div>
+      <p class="card-body market-summary">Recent pieces from operators and investors shaping how the market thinks about this space.</p>
+      <ul class="tl">
+        <li class="tl-item">
+          <div class="item-meta">
+            <span class="tl-author">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></svg>
+              Sonya Huang
+            </span>
+            <span class="dot-sep">·</span>
+            <span>Partner, Sequoia</span>
+            <span class="dot-sep">·</span>
+            <span>Sequoia Capital blog</span>
+            <span class="dot-sep">·</span>
+            <span class="tabular">Mar 4, 2026</span>
+          </div>
+          <a class="item-title" href="https://www.sequoiacap.com/article/agent-runtime-thesis" target="_blank" rel="noopener noreferrer">
+            The agent runtime is the new database
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+          </a>
+          <p class="item-summary">Argues durable execution will become the foundational layer for agentic systems the way Postgres became the default for transactional data; names Acme and one competitor as the credible plays.</p>
+        </li>
+      </ul>
+    </section>
+
+    <!-- Competitive landscape -->
+    <section class="card">
+      <div class="card-title">Competitive landscape</div>
+      <p class="card-body market-summary">Incumbents (Temporal, Airflow) compete on enterprise distribution and existing data-pipeline gravity; new entrants like Acme differentiate on developer experience and LLM-native primitives.</p>
+      <ul class="competitors">
+        <li class="comp">
+          <div class="comp-head">
+            <div class="comp-id">
+              <div class="comp-logo">
+                <img src="https://www.google.com/s2/favicons?domain=temporal.io&sz=64" alt="" referrerpolicy="no-referrer" onerror="this.classList.add('broken')">
+                <div class="logo-fallback">T</div>
               </div>
-              <div className="mt-4">
-                <BulletList items={insights.updatedKeyRisks} accentColor="rgb(252,211,77)" Icon={AlertTriangle} />
-              </div>
+              <span class="comp-name">Temporal</span>
             </div>
-          )}
-        </GlowCard>
-      )}
-
-      {insights.updatedQuestions?.length > 0 && (
-        <GlowCard title="Updated diligence questions" accent="#22d3ee" delay={340}>
-          <p className="text-sm leading-relaxed text-white/65">
-            Refined questions for the team given what the new artifacts revealed and what they didn't.
-          </p>
-          <ul className="mt-5 space-y-4">
-            {insights.updatedQuestions.map((d, i) => (
-              <li key={i} className="rounded-xl border border-white/[0.07] bg-white/[0.015] p-5">
-                <div className="flex items-start gap-3">
-                  <span className="mt-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-400/[0.12] text-[11px] font-medium text-cyan-200">
-                    {i + 1}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-base font-medium text-white">{d.area}</p>
-                    <p className="mt-1 text-sm leading-relaxed text-white/65">{d.why}</p>
-                    {d.asks?.length > 0 && (
-                      <ul className="mt-3 space-y-1.5">
-                        {d.asks.map((q, j) => (
-                          <li key={j} className="flex gap-2 text-sm text-white/75">
-                            <Search className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-300/70" />
-                            <span>{q}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    )}
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-        </GlowCard>
-      )}
-
-      {insights.stillNeed?.length > 0 && (
-        <GlowCard title="What we still don't know" delay={400}>
-          <BulletList items={insights.stillNeed} accentColor="rgb(148,163,184)" Icon={Search} />
-        </GlowCard>
-      )}
-    </>
-  );
-}
-
-export default function Brief() {
-  const { company, redFlags, coreThesis, what, founders, news, thoughtLeadership, competitors, tam, thesis, diligence, diligenceInsights } = BRIEF;
-  const [activeTab, setActiveTab] = useState("overview");
-  const hasInsights = !!diligenceInsights && Object.keys(diligenceInsights).length > 0;
-
-  return (
-    <main className="relative min-h-screen overflow-hidden bg-black px-6 py-10 text-white antialiased">
-      <style>{ENTRY_KEYFRAMES}</style>
-
-      {/* Aurora */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 -top-40 h-[36rem] opacity-70 blur-3xl"
-        style={{
-          background:
-            "radial-gradient(ellipse 60% 50% at 20% 0%, rgba(139,92,246,0.20), transparent 70%), radial-gradient(ellipse 50% 50% at 80% 10%, rgba(34,211,238,0.14), transparent 70%)",
-          animation: "diliqFadeIn 1200ms ease-out both",
-        }}
-      />
-
-      <div className="relative mx-auto max-w-5xl">
-        {/* Hero */}
-        <FadeUp>
-          <header className="relative flex flex-col gap-6 border-b border-white/[0.08] pb-10 pt-2 sm:flex-row sm:items-end sm:justify-between">
-            <div className="flex items-center gap-5">
-              <CompanyLogo name={company.name} domain={company.domain} />
-              <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.22em] text-white/40">
-                  Pre-meeting brief
-                </p>
-                <h1 className="mt-1.5 bg-gradient-to-br from-white via-white to-white/60 bg-clip-text text-4xl font-medium tracking-tight text-transparent sm:text-6xl">
-                  {company.name}
-                </h1>
-                {company.domain && (
-                  <a
-                    href={`https://${company.domain}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="mt-2 inline-flex items-center gap-1.5 text-sm text-white/55 transition hover:text-white"
-                  >
-                    {company.domain}
-                    <ExternalLink className="h-3 w-3" />
-                  </a>
-                )}
-                {company.note && (
-                  <p className="mt-3 max-w-prose text-sm text-white/55">{company.note}</p>
-                )}
-              </div>
-            </div>
-            <div className="flex items-center gap-2 self-start sm:self-end">
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-white/[0.08] bg-white/[0.02] px-3 py-1 font-mono text-[11px] text-white/55 backdrop-blur">
-                <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-400/60 opacity-60" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-violet-400" />
+            <span class="comp-domain">temporal.io</span>
+          </div>
+          <p class="comp-tagline">Durable workflow engine; deepest enterprise adoption in non-AI workflows.</p>
+          <div class="scoreline">
+            <span class="scoreline-label">vs Acme</span>
+            <span class="dot-sep">·</span>
+            <span class="score-pip lead">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>
+              <span class="score-pip-count">2</span>
+              <span class="score-pip-text">Acme leads</span>
+            </span>
+            <span class="score-pip lag">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 7 10 10"/><path d="M17 7v10H7"/></svg>
+              <span class="score-pip-count">1</span>
+              <span class="score-pip-text">Temporal leads</span>
+            </span>
+            <span class="score-pip equal">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>
+              <span class="score-pip-count">1</span>
+              <span class="score-pip-text">even</span>
+            </span>
+          </div>
+          <ul class="chips">
+            <li class="chip">
+              <div class="chip-head">
+                <span class="chip-dim">Product</span>
+                <span class="chip-verdict lead">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>
+                  <span class="chip-winner">Acme</span> <span class="chip-leads">leads</span>
                 </span>
-                as of {fmtDate(company.asOf)}
-              </span>
-            </div>
-          </header>
-        </FadeUp>
-
-        <TabBar active={activeTab} onChange={setActiveTab} hasInsights={hasInsights} />
-
-        <section key={activeTab} className="mt-7 grid gap-5">
-          {activeTab === "diligence" && (
-            hasInsights ? (
-              <DiligenceInsightsContent insights={diligenceInsights} />
-            ) : (
-              <DiligenceEmptyState />
-            )
-          )}
-          {activeTab === "overview" && (<>
-
-          {/* Red flags — only renders if MAJOR flags present */}
-          {redFlags && redFlags.length > 0 && (
-            <FadeUp delay={40}>
-              <div className="relative overflow-hidden rounded-2xl border border-rose-500/30 bg-gradient-to-br from-rose-950/60 via-rose-900/30 to-rose-950/60 p-6 sm:p-7 backdrop-blur">
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute -inset-x-12 -top-24 h-48 opacity-60 blur-3xl"
-                  style={{
-                    background:
-                      "radial-gradient(ellipse 60% 80% at 50% 0%, rgba(244,63,94,0.35), transparent 70%)",
-                  }}
-                />
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-rose-300/40 to-transparent"
-                />
-                <div className="relative">
-                  <div className="flex items-center gap-2 text-rose-200">
-                    <Flag className="h-4 w-4" />
-                    <p className="text-[11px] font-medium uppercase tracking-[0.2em]">Red flags</p>
-                  </div>
-                  <ul className="mt-5 space-y-4">
-                    {redFlags.map((rf, i) => (
-                      <li key={i} className="flex gap-3">
-                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-rose-300" />
-                        <div className="min-w-0">
-                          <p className="text-base font-medium text-rose-50">{rf.title}</p>
-                          <p className="mt-1 text-sm leading-relaxed text-rose-100/75">{rf.description}</p>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
               </div>
-            </FadeUp>
-          )}
-
-          {/* Core thesis — the punchy 2-3 sentence why-we-invested */}
-          {coreThesis && (
-            <FadeUp delay={80}>
-              <div className="relative overflow-hidden rounded-2xl border border-white/[0.10] bg-gradient-to-br from-violet-500/[0.06] via-white/[0.02] to-cyan-500/[0.06] p-7 sm:p-9 backdrop-blur">
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute -inset-x-12 -top-24 h-48 opacity-60 blur-3xl"
-                  style={{
-                    background:
-                      "radial-gradient(ellipse 60% 80% at 50% 0%, rgba(139,92,246,0.20), rgba(34,211,238,0.10) 60%, transparent 80%)",
-                  }}
-                />
-                <div
-                  aria-hidden
-                  className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"
-                />
-                <div className="relative">
-                  <div className="flex items-center gap-2 text-white/55">
-                    <Sparkles className="h-3.5 w-3.5 text-violet-300" />
-                    <p className="text-[11px] font-medium uppercase tracking-[0.2em]">Core thesis</p>
-                  </div>
-                  <p className="mt-5 bg-gradient-to-br from-white via-white to-white/65 bg-clip-text text-2xl font-medium leading-snug tracking-tight text-transparent sm:text-3xl">
-                    {coreThesis}
-                  </p>
-                </div>
+              <p class="chip-evidence">LLM-native primitives (token streaming, structured output retries, tool-use replay) ship out of the box; on Temporal you build them.</p>
+            </li>
+            <li class="chip">
+              <div class="chip-head">
+                <span class="chip-dim">Pricing</span>
+                <span class="chip-verdict lag">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 7 10 10"/><path d="M17 7v10H7"/></svg>
+                  <span class="chip-winner">Temporal</span> <span class="chip-leads">leads</span>
+                </span>
               </div>
-            </FadeUp>
-          )}
-
-          {/* What */}
-          <GlowCard title="What they do" delay={140}>
-            <p className="text-2xl font-medium leading-snug tracking-tight text-white">{what.tagline}</p>
-            <p className="mt-5 text-base leading-relaxed text-white/80">{what.summary}</p>
-            <p className="mt-4 text-sm leading-relaxed text-white/65">{what.howItWorks}</p>
-            <SourceList sources={what.sources} />
-          </GlowCard>
-
-          {/* Founders */}
-          <GlowCard title="Founders & key people" delay={220}>
-            <ul className="divide-y divide-white/[0.06]">
-              {founders.map((p, i) => (
-                <li key={i} className="grid grid-cols-1 gap-x-6 gap-y-3 py-5 first:pt-0 last:pb-0 sm:grid-cols-[minmax(220px,1fr)_2fr]">
-                  <div className="flex items-center gap-3">
-                    <div aria-hidden className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-white/10 bg-gradient-to-br from-violet-500/25 to-cyan-400/20 text-xs font-medium text-white/85">
-                      {initialsOf(p.name) || "·"}
-                    </div>
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-1.5">
-                        <p className="truncate font-medium text-white">{p.name}</p>
-                        {p.linkedinUrl && (
-                          <a href={p.linkedinUrl} target="_blank" rel="noopener noreferrer" aria-label={`${p.name} on LinkedIn`} className="shrink-0 text-white/40 transition-colors hover:text-[#0a66c2]">
-                            <Linkedin className="h-3.5 w-3.5" />
-                          </a>
-                        )}
-                      </div>
-                      <p className="truncate text-sm text-white/50">{p.role}</p>
-                    </div>
-                  </div>
-                  <div className="text-sm leading-relaxed text-white/75">
-                    {p.background}
-                    {p.notableSignal && (
-                      <span className="mt-2 block">
-                        <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/25 bg-amber-300/[0.06] px-2.5 py-0.5 text-[11px] text-amber-200/95">
-                          <span className="h-1 w-1 rounded-full bg-amber-300 shadow-[0_0_6px_rgb(245,158,11)]" />
-                          {p.notableSignal}
-                        </span>
-                      </span>
-                    )}
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </GlowCard>
-
-          {/* News */}
-          <GlowCard title="Recent news" delay={300}>
-            {news.length === 0 ? (
-              <p className="text-sm text-white/55">No notable news found in the last 12 months.</p>
-            ) : (
-              <ul className="-mx-2 divide-y divide-white/[0.06]">
-                {news.map((item, i) => (
-                  <li key={i} className="rounded-lg px-2 py-4 transition-colors first:pt-0 last:pb-0 hover:bg-white/[0.015]">
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-white/50">
-                      <span className="tabular-nums">{fmtDate(item.date)}</span>
-                      <span className={`rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider ${CATEGORY_STYLES[item.category]}`}>
-                        {item.category}
-                      </span>
-                      <span className="text-white/25">·</span>
-                      <span className="text-white/55">{item.source}</span>
-                      {hostOf(item.url) && <span className="text-white/30">{hostOf(item.url)}</span>}
-                    </div>
-                    <a href={item.url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-flex items-start gap-1.5 text-base font-medium leading-snug text-white transition hover:text-white/85">
-                      {item.title}
-                      <ExternalLink className="mt-1 h-3.5 w-3.5 shrink-0 opacity-40" />
-                    </a>
-                    <p className="mt-1.5 text-sm leading-relaxed text-white/70">{item.summary}</p>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </GlowCard>
-
-          {/* Thought leadership */}
-          {thoughtLeadership && thoughtLeadership.length > 0 && (
-            <GlowCard title="Thought leadership" delay={360}>
-              <p className="text-sm leading-relaxed text-white/65">
-                Recent pieces from operators and investors shaping how the market thinks about this space.
-              </p>
-              <ul className="mt-5 -mx-2 divide-y divide-white/[0.06]">
-                {thoughtLeadership.map((p, i) => (
-                  <li key={i} className="rounded-lg px-2 py-4 transition-colors first:pt-0 last:pb-0 hover:bg-white/[0.015]">
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-white/55">
-                      <span className="inline-flex items-center gap-1.5 rounded-full border border-violet-300/25 bg-violet-300/[0.06] px-2.5 py-0.5 text-[11px] text-violet-100/95">
-                        <Lightbulb className="h-3 w-3 text-violet-200" />
-                        {p.author}
-                      </span>
-                      <span className="text-white/40">{p.role}</span>
-                      <span className="text-white/25">·</span>
-                      <span className="text-white/45">{p.source}</span>
-                      <span className="text-white/25">·</span>
-                      <span className="tabular-nums text-white/45">{fmtDate(p.date)}</span>
-                    </div>
-                    <a
-                      href={p.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-2 inline-flex items-start gap-1.5 text-base font-medium leading-snug text-white transition hover:text-white/85"
-                    >
-                      {p.title}
-                      <ExternalLink className="mt-1 h-3.5 w-3.5 shrink-0 opacity-40" />
-                    </a>
-                    <p className="mt-1.5 text-sm leading-relaxed text-white/70">{p.summary}</p>
-                  </li>
-                ))}
-              </ul>
-            </GlowCard>
-          )}
-
-          {/* Competitors */}
-          <GlowCard title="Competitive landscape" delay={420}>
-            <p className="text-sm leading-relaxed text-white/70">{competitors.marketSummary}</p>
-            <ul className="mt-6 space-y-4">
-              {competitors.list.map((c, i) => {
-                const leads = c.chips.filter((x) => x.verdict === "lead").length;
-                const lags = c.chips.filter((x) => x.verdict === "lag").length;
-                const evens = c.chips.filter((x) => x.verdict === "equal").length;
-                const verdictName = (verdict) =>
-                  verdict === "lead" ? company.name : verdict === "lag" ? c.name : null;
-                return (
-                <li key={i} className="rounded-xl border border-white/[0.07] bg-white/[0.015] p-5 transition-colors hover:border-white/[0.14] hover:bg-white/[0.025]">
-                  <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                    <div className="flex min-w-0 items-center gap-2.5">
-                      <CompetitorLogo name={c.name} domain={c.domain} />
-                      <p className="truncate text-base font-medium text-white">{c.name}</p>
-                    </div>
-                    {c.domain && <span className="font-mono text-[11px] text-white/30">{c.domain}</span>}
-                  </div>
-                  <p className="mt-2 text-sm leading-relaxed text-white/60">{c.tagline}</p>
-
-                  {/* Scoreline header — at-a-glance who leads in how many dimensions */}
-                  <div className="mt-4 flex flex-wrap items-center gap-x-3 gap-y-1.5 rounded-lg border border-white/[0.05] bg-black/20 px-3 py-2 text-[11px]">
-                    <span className="font-mono uppercase tracking-[0.16em] text-white/40">vs {company.name}</span>
-                    <span className="text-white/25">·</span>
-                    <span className="inline-flex items-center gap-1 text-emerald-200">
-                      <ArrowUpRight className="h-3 w-3" />
-                      <span className="font-mono tabular-nums">{leads}</span>
-                      <span className="text-white/55">{company.name} leads</span>
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-rose-200">
-                      <ArrowDownRight className="h-3 w-3" />
-                      <span className="font-mono tabular-nums">{lags}</span>
-                      <span className="text-white/55">{c.name} leads</span>
-                    </span>
-                    <span className="inline-flex items-center gap-1 text-white/55">
-                      <Minus className="h-3 w-3" />
-                      <span className="font-mono tabular-nums">{evens}</span>
-                      <span>even</span>
-                    </span>
-                  </div>
-
-                  <dl className="mt-3 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-                    {c.chips.map((chip, j) => {
-                      const v = VERDICT[chip.verdict];
-                      const winner = verdictName(chip.verdict);
-                      return (
-                        <div key={j} className="rounded-lg border border-white/[0.05] bg-black/30 p-3">
-                          <div className="flex flex-wrap items-center justify-between gap-x-2 gap-y-1">
-                            <dt className="text-[10px] font-medium uppercase tracking-[0.18em] text-white/45">{DIMENSION_LABEL[chip.dimension]}</dt>
-                            <span className={`inline-flex max-w-full items-center gap-1 truncate rounded-full border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider ${v.chip}`}>
-                              <v.Icon className="h-3 w-3 shrink-0" />
-                              {chip.verdict === "equal" ? (
-                                <span>Even</span>
-                              ) : (
-                                <span className="truncate">
-                                  <span className="font-semibold">{winner}</span>{" "}
-                                  <span className="opacity-70">leads</span>
-                                </span>
-                              )}
-                            </span>
-                          </div>
-                          <dd className="mt-2 text-xs leading-relaxed text-white/70">{chip.description}</dd>
-                        </div>
-                      );
-                    })}
-                  </dl>
-                </li>
-                );
-              })}
-            </ul>
-            <SourceList sources={competitors.sources} />
-          </GlowCard>
-
-          {/* Market opportunity (TAM) */}
-          <GlowCard title="Market opportunity" delay={500}>
-            <div className="flex flex-wrap items-baseline justify-between gap-4">
-              <div>
-                <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-white/40">Headline TAM</p>
-                <p className="mt-2 bg-gradient-to-r from-violet-200 via-white to-cyan-200 bg-clip-text text-4xl font-medium tracking-tight text-transparent">
-                  {fmtMoney(tam.headline.low)} – {fmtMoney(tam.headline.high)}
-                </p>
+              <p class="chip-evidence">Temporal Cloud has 5+ years of pricing iteration and tiered enterprise contracts; Acme's consumption model triggers sticker shock at &gt;10M workflow steps.</p>
+            </li>
+            <li class="chip">
+              <div class="chip-head">
+                <span class="chip-dim">Perception</span>
+                <span class="chip-verdict equal">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>
+                  Even
+                </span>
               </div>
-              <div className="inline-flex items-center gap-1.5 self-start rounded-full border border-white/[0.08] bg-white/[0.02] px-3 py-1 text-[11px] text-white/55">
-                <Target className="h-3 w-3" />
-                bottom-up
+              <p class="chip-evidence">Both have strong dev-tools mindshare; Temporal known for reliability, Acme for the AI angle.</p>
+            </li>
+            <li class="chip">
+              <div class="chip-head">
+                <span class="chip-dim">Leadership</span>
+                <span class="chip-verdict lead">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>
+                  <span class="chip-winner">Acme</span> <span class="chip-leads">leads</span>
+                </span>
               </div>
-            </div>
-            <p className="mt-5 text-sm leading-relaxed text-white/75">{tam.analysis}</p>
-
-            <div className="mt-6 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-xl border border-violet-400/15 bg-violet-400/[0.03] p-5">
-                <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-violet-200/85">Enterprise</p>
-                <p className="mt-3 text-sm leading-relaxed text-white/75">{tam.enterprise.description}</p>
-                <dl className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <dt className="text-white/40">Avg ACV</dt>
-                    <dd className="mt-0.5 font-mono text-base text-white">{fmtMoney(tam.enterprise.avgAcv)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-white/40">Buyers</dt>
-                    <dd className="mt-0.5 font-mono text-base text-white">{fmtCount(tam.enterprise.buyerCount)}</dd>
-                  </div>
-                </dl>
-                <p className="mt-3 border-t border-white/[0.06] pt-3 text-xs text-white/50">
-                  Implied: <span className="font-mono text-white/85">{fmtMoney(tam.enterprise.avgAcv * tam.enterprise.buyerCount)}</span>
-                </p>
-              </div>
-              <div className="rounded-xl border border-cyan-400/15 bg-cyan-400/[0.03] p-5">
-                <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-cyan-200/85">Mid-market</p>
-                <p className="mt-3 text-sm leading-relaxed text-white/75">{tam.midMarket.description}</p>
-                <dl className="mt-4 grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <dt className="text-white/40">Avg ACV</dt>
-                    <dd className="mt-0.5 font-mono text-base text-white">{fmtMoney(tam.midMarket.avgAcv)}</dd>
-                  </div>
-                  <div>
-                    <dt className="text-white/40">Buyers</dt>
-                    <dd className="mt-0.5 font-mono text-base text-white">{fmtCount(tam.midMarket.buyerCount)}</dd>
-                  </div>
-                </dl>
-                <p className="mt-3 border-t border-white/[0.06] pt-3 text-xs text-white/50">
-                  Implied: <span className="font-mono text-white/85">{fmtMoney(tam.midMarket.avgAcv * tam.midMarket.buyerCount)}</span>
-                </p>
-              </div>
-            </div>
-
-            {/* Sensitivity table: ACV (rows) × buyer count (cols) */}
-            {(() => {
-              const max =
-                tam.sensitivity.acvs[tam.sensitivity.acvs.length - 1] *
-                tam.sensitivity.buyerCounts[tam.sensitivity.buyerCounts.length - 1];
-              return (
-                <div className="mt-7">
-                  <p className="text-[10px] font-medium uppercase tracking-[0.18em] text-white/40">
-                    Sensitivity — TAM = ACV × buyers
-                  </p>
-                  <div className="mt-3 overflow-hidden rounded-xl border border-white/[0.06]">
-                    <table className="w-full table-fixed border-collapse text-xs">
-                      <thead>
-                        <tr className="bg-white/[0.03] text-white/45">
-                          <th className="px-3 py-2 text-left font-medium uppercase tracking-wider">
-                            ACV ↓ / Buyers →
-                          </th>
-                          {tam.sensitivity.buyerCounts.map((b) => (
-                            <th key={b} className="px-3 py-2 text-right font-mono text-white/65">
-                              {fmtCount(b)}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {tam.sensitivity.acvs.map((a, ri) => (
-                          <tr key={a} className={ri % 2 === 0 ? "bg-white/[0.01]" : ""}>
-                            <th className="px-3 py-2 text-left font-mono text-white/65">{fmtMoney(a)}</th>
-                            {tam.sensitivity.buyerCounts.map((b) => {
-                              const v = a * b;
-                              const t = Math.min(1, v / max);
-                              const intensity = 0.04 + t * 0.22;
-                              return (
-                                <td
-                                  key={b}
-                                  className="px-3 py-2 text-right font-mono tabular-nums text-white/85"
-                                  style={{
-                                    background: `linear-gradient(135deg, rgba(139,92,246,${intensity}) 0%, rgba(34,211,238,${intensity * 0.7}) 100%)`,
-                                  }}
-                                >
-                                  {fmtMoney(v)}
-                                </td>
-                              );
-                            })}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  <p className="mt-2 text-[11px] text-white/35">
-                    Cells shaded by relative TAM — darker = larger.
-                  </p>
-                </div>
-              );
-            })()}
-
-            <SourceList sources={tam.sources} />
-          </GlowCard>
-
-          {/* Investment thesis: bull / bear / risks */}
-          <GlowCard title="Investment thesis" delay={580}>
-            <div className="grid gap-5 sm:grid-cols-2">
-              <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.03] p-5">
-                <div className="flex items-center gap-2 text-emerald-200">
-                  <TrendingUp className="h-4 w-4" />
-                  <p className="text-[11px] font-medium uppercase tracking-[0.2em]">Bull case</p>
-                </div>
-                <div className="mt-4">
-                  <BulletList items={thesis.bullCase} accentColor="rgb(110,231,183)" Icon={ArrowUpRight} />
-                </div>
-              </div>
-              <div className="rounded-xl border border-rose-400/15 bg-rose-400/[0.03] p-5">
-                <div className="flex items-center gap-2 text-rose-200">
-                  <TrendingDown className="h-4 w-4" />
-                  <p className="text-[11px] font-medium uppercase tracking-[0.2em]">Bear case</p>
-                </div>
-                <div className="mt-4">
-                  <BulletList items={thesis.bearCase} accentColor="rgb(251,113,133)" Icon={ArrowDownRight} />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-5 rounded-xl border border-amber-300/15 bg-amber-300/[0.03] p-5">
-              <div className="flex items-center gap-2 text-amber-200">
-                <AlertTriangle className="h-4 w-4" />
-                <p className="text-[11px] font-medium uppercase tracking-[0.2em]">Key risks</p>
-              </div>
-              <div className="mt-4">
-                <BulletList items={thesis.keyRisks} accentColor="rgb(252,211,77)" Icon={AlertTriangle} />
-              </div>
-            </div>
-          </GlowCard>
-
-          {/* Diligence priorities */}
-          <GlowCard title="Diligence priorities" accent="#22d3ee" delay={660}>
-            <p className="text-sm leading-relaxed text-white/65">
-              Areas worth hardening before a term sheet — what to ask the team and which data to request.
-            </p>
-            <ul className="mt-5 space-y-4">
-              {diligence.priorities.map((d, i) => (
-                <li key={i} className="rounded-xl border border-white/[0.07] bg-white/[0.015] p-5">
-                  <div className="flex items-start gap-3">
-                    <span className="mt-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-cyan-400/[0.12] text-[11px] font-medium text-cyan-200">
-                      {i + 1}
-                    </span>
-                    <div className="min-w-0">
-                      <p className="text-base font-medium text-white">{d.area}</p>
-                      <p className="mt-1 text-sm leading-relaxed text-white/65">{d.why}</p>
-                      {d.asks?.length > 0 && (
-                        <ul className="mt-3 space-y-1.5">
-                          {d.asks.map((q, j) => (
-                            <li key={j} className="flex gap-2 text-sm text-white/75">
-                              <Search className="mt-0.5 h-3.5 w-3.5 shrink-0 text-cyan-300/70" />
-                              <span>{q}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      )}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </GlowCard>
-          </>)}
-        </section>
-
-        <footer className="mt-16 border-t border-white/[0.06] pt-6 text-center text-xs text-white/30">
-          Generated with web search · cited where possible · always verify facts before acting
-        </footer>
+              <p class="chip-evidence">Stripe-trained founding team; Temporal's CEO is technical-strong but has no prior enterprise GTM exit.</p>
+            </li>
+          </ul>
+        </li>
+      </ul>
+      <div class="sources">
+        <div class="sources-label">Sources</div>
+        <ul class="sources-list">
+          <li><a href="https://temporal.io" target="_blank" rel="noopener noreferrer">temporal.io</a></li>
+        </ul>
       </div>
-    </main>
-  );
-}
+    </section>
+
+    <!-- Market opportunity -->
+    <section class="card">
+      <div class="card-title">Market opportunity</div>
+      <div class="card-body">
+        <div class="tam-head">
+          <div>
+            <p class="tam-head-label">Headline TAM</p>
+            <p class="tam-num">$8B – $18B</p>
+          </div>
+          <span class="tam-method">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>
+            bottom-up
+          </span>
+        </div>
+        <p class="tam-analysis">Bottom-up: ~4,000 enterprise platform teams running production AI workloads at $250K ACV (today's reality), plus ~60,000 mid-market teams adopting at $35K ACV as agentic patterns mature. Range bracket reflects (a) penetration ceiling assumption and (b) ACV trajectory if observability gets unbundled. Upside: enterprise ACV doubles as agent workloads grow; downside: hyperscalers ship "good enough" durable execution natively.</p>
+        <div class="segments">
+          <div class="seg seg-ent">
+            <p class="seg-label">Enterprise</p>
+            <p class="seg-desc">Platform engineering at Fortune 1000s shipping AI features to production. Buys via VP-Engineering / CTO; replaces homegrown LangChain stacks and Airflow pipelines.</p>
+            <dl class="seg-stats">
+              <div><dt class="seg-stat-label">Avg ACV</dt><dd class="seg-stat-val">$250K</dd></div>
+              <div><dt class="seg-stat-label">Buyers</dt><dd class="seg-stat-val">4.0K</dd></div>
+            </dl>
+            <p class="seg-implied">Implied: <span class="seg-implied-num">$1.0B</span></p>
+          </div>
+          <div class="seg seg-mid">
+            <p class="seg-label">Mid-market</p>
+            <p class="seg-desc">Series B-D AI-native startups and digital-first mid-market companies. Buys via founding engineer or first platform hire; PLG motion through OSS adoption.</p>
+            <dl class="seg-stats">
+              <div><dt class="seg-stat-label">Avg ACV</dt><dd class="seg-stat-val">$35K</dd></div>
+              <div><dt class="seg-stat-label">Buyers</dt><dd class="seg-stat-val">60K</dd></div>
+            </dl>
+            <p class="seg-implied">Implied: <span class="seg-implied-num">$2.1B</span></p>
+          </div>
+        </div>
+        <div class="sens">
+          <p class="sens-label">Sensitivity — TAM = ACV × buyers</p>
+          <div class="sens-wrap">
+            <table class="sens-table">
+              <thead>
+                <tr>
+                  <th class="col-label">ACV ↓ / Buyers →</th>
+                  <th>500</th><th>2.5K</th><th>10K</th><th>25K</th><th>75K</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th>$25K</th>
+                  <td style="background:rgba(139,92,246,0.04)">$13M</td>
+                  <td style="background:rgba(139,92,246,0.06)">$63M</td>
+                  <td style="background:rgba(139,92,246,0.08)">$250M</td>
+                  <td style="background:rgba(139,92,246,0.12)">$625M</td>
+                  <td style="background:rgba(139,92,246,0.18)">$1.9B</td>
+                </tr>
+                <tr>
+                  <th>$75K</th>
+                  <td style="background:rgba(139,92,246,0.05)">$38M</td>
+                  <td style="background:rgba(139,92,246,0.08)">$188M</td>
+                  <td style="background:rgba(139,92,246,0.12)">$750M</td>
+                  <td style="background:rgba(139,92,246,0.18)">$1.9B</td>
+                  <td style="background:rgba(139,92,246,0.24)">$5.6B</td>
+                </tr>
+                <tr>
+                  <th>$150K</th>
+                  <td style="background:rgba(139,92,246,0.06)">$75M</td>
+                  <td style="background:rgba(139,92,246,0.10)">$375M</td>
+                  <td style="background:rgba(139,92,246,0.16)">$1.5B</td>
+                  <td style="background:rgba(139,92,246,0.22)">$3.8B</td>
+                  <td style="background:rgba(139,92,246,0.26)">$11B</td>
+                </tr>
+                <tr>
+                  <th>$300K</th>
+                  <td style="background:rgba(139,92,246,0.08)">$150M</td>
+                  <td style="background:rgba(139,92,246,0.14)">$750M</td>
+                  <td style="background:rgba(139,92,246,0.20)">$3.0B</td>
+                  <td style="background:rgba(139,92,246,0.24)">$7.5B</td>
+                  <td style="background:rgba(139,92,246,0.26)">$22B</td>
+                </tr>
+                <tr>
+                  <th>$600K</th>
+                  <td style="background:rgba(139,92,246,0.10)">$300M</td>
+                  <td style="background:rgba(139,92,246,0.18)">$1.5B</td>
+                  <td style="background:rgba(139,92,246,0.24)">$6.0B</td>
+                  <td style="background:rgba(139,92,246,0.26)">$15B</td>
+                  <td style="background:rgba(139,92,246,0.26)">$45B</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="sens-note">Cells shaded by relative TAM — darker = larger.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Investment thesis -->
+    <section class="card">
+      <div class="card-title">Investment thesis</div>
+      <div class="card-body">
+        <div class="bb-grid">
+          <div class="bb bb-bull">
+            <div class="bb-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 7 13.5 15.5 8.5 10.5 2 17"/><path d="M16 7h6v6"/></svg>
+              <span class="bb-head-label">Bull case</span>
+            </div>
+            <ul class="bb-list">
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>OSS distribution: 14K GitHub stars in 9 months, organic adoption at Notion + Vercel + Ramp before any sales motion.</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h10v10"/><path d="M7 17 17 7"/></svg>Replay/observability is the wedge to upsell into a full agent platform — most adjacent to evals, prompt management, agent-mesh.</li>
+            </ul>
+          </div>
+          <div class="bb bb-bear">
+            <div class="bb-head">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17 13.5 8.5 8.5 13.5 2 7"/><path d="M16 17h6v-6"/></svg>
+              <span class="bb-head-label">Bear case</span>
+            </div>
+            <ul class="bb-list">
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 7 10 10"/><path d="M17 7v10H7"/></svg>AWS Step Functions + Bedrock Agents could own this if Amazon decides to ship LLM-native primitives.</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 7 10 10"/><path d="M17 7v10H7"/></svg>Open-source forks could commoditize the runtime; cloud business compresses to thin margins on hosting.</li>
+            </ul>
+          </div>
+        </div>
+        <div class="bb bb-risk">
+          <div class="bb-head">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+            <span class="bb-head-label">Key risks</span>
+          </div>
+          <ul class="bb-list">
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Single-vendor concentration risk: ~40% of paid revenue from top 3 customers per public commentary.</li>
+            <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>Active DOJ inquiry (see red flag) could chill enterprise sales cycles for 12-18 months.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Diligence priorities -->
+    <section class="card">
+      <div class="card-title">Diligence priorities</div>
+      <p class="card-body dil-intro">Areas worth hardening before a term sheet — what to ask the team and which data to request.</p>
+      <ul class="dil-list">
+        <li class="dil-item">
+          <div class="dil-row">
+            <span class="dil-num">1</span>
+            <div>
+              <p class="dil-area">Net revenue retention</p>
+              <p class="dil-why">Public commentary suggests strength but no disclosed number; gross retention vs net unclear.</p>
+              <ul class="dil-asks">
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>Cohort NRR by segment for last 8 quarters</li>
+                <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>Top-10 customer concentration and churn risk in those accounts</li>
+              </ul>
+            </div>
+          </div>
+        </li>
+      </ul>
+    </section>
+
+  </section>
+
+  <!-- ============================================================ DILIGENCE INSIGHTS PANE -->
+  <section class="pane pane-diligence">
+
+    <!-- EMPTY STATE: keep this on initial brief. Replace with the populated structure
+         (see "Follow-up mode" in the SKILL.md prompt) once the user shares diligence
+         materials. -->
+    <div class="dil-empty">
+      <div class="dil-empty-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" x2="8" y1="13" y2="13"/><line x1="16" x2="8" y1="17" y2="17"/><line x1="10" x2="8" y1="9" y2="9"/></svg>
+      </div>
+      <p class="dil-empty-title">Share key diligence artifacts and data with Claude to activate this tab.</p>
+      <p class="dil-empty-body">Drop in the data-room deck, financial model, customer references, cohort data, or investor memo — anything you'd review before a term sheet. Claude reads it, then refreshes this tab with takeaways, updated questions, flags, and a refined thesis.</p>
+    </div>
+
+  </section>
+
+  <footer>Generated with web search · cited where possible · always verify facts before acting</footer>
+</main>
+
+</body>
+</html>
 ```
 
-### Filling in the data
+## Diligence Insights — populated structure
 
-Replace `BRIEF` with the real researched data. Specifically:
+When the user shares diligence artifacts, regenerate the artifact with the diligence pane populated. Replace the `<div class="dil-empty">` block with content like this (use the same patterns as the Overview tab cards so the visual language is consistent):
 
-- `company.name` / `company.domain` / `company.asOf` (today YYYY-MM-DD) / `company.note` (1-line disambiguation if needed; null otherwise)
-- `redFlags[]` — **leave as `[]` unless there are MAJOR red flags worth raising before the meeting.** Threshold: active litigation, regulatory action, fraud allegations, key-founder departure mid-round, material customer loss, security incident, accounting concerns. Routine "competitive pressure" or "high burn" do NOT qualify — those belong in the bear case. Each entry: `{ title, description }`. If there is anything here, it renders FIRST so the partner sees it before anything else.
-- `coreThesis` — **2–3 sentences, no more.** Write it as if a partner is closing the Monday meeting and saying out loud the reasoned bet that justifies leading this round. Specific. Opinionated. Defensible. No hedge words. Reference the wedge, the why-now, and what compounds — the things that would make this a 10x outcome, in plain language. This is the one piece of writing in the brief that captures the *bet*; the rest is supporting evidence. If the company is genuinely uninvestable, set this to a one-sentence "Pass — [reason]" rather than dressing it up.
-- `what.{tagline, summary, howItWorks, sources}` per the persona section above (max 8 sources)
-- `founders[]` — 1–6 people. `notableSignal` and `linkedinUrl` are nullable. Don't guess LinkedIn handles.
-- `news[]` — max 8, newest first, prioritized funding > exec > launches > customer > regulatory. Skip PR fluff. Categories: 'funding' | 'product' | 'people' | 'press' | 'other'.
-- `thoughtLeadership[]` — **3–4 max.** Recent (last ~12 months) essays, podcasts, talks, or memos on this market from bona fide industry voices: founders, investors, named operators. Bar is "this person actually moves opinion in this space" — skip mainstream press, sell-side analysts, generic newsletters. Each entry: `title`, `summary` (1–2 sentences capturing the actual argument), `author`, `role` (e.g. "Partner, a16z" or "Founder, Stripe"), `source` (publication or platform name), `url`, `date`. If you genuinely can't find 3, return fewer; don't pad with mediocre links.
-- `competitors.list[]` — 3–5 most directly competitive. Each gets exactly four chips in dimension order: product, pricing, perception, leadership. Verdicts from the SUBJECT COMPANY's perspective: 'lead' / 'lag' / 'equal'. Default to 'equal' when you can't defend a clear lead/lag with a specific fact.
-- `tam.headline` — `{ low, high }` headline TAM as raw USD numbers (e.g. `8_000_000_000`). Bottom-up: ACV × addressable buyers, summed across enterprise + mid-market, with a reasonable multiplier range to cover assumptions. Don't paste an analyst report's top-down number.
-- `tam.analysis` — 1–2 paragraphs explaining the bottom-up build, the structural assumptions (penetration ceiling, ACV trajectory, motion shift), and what would expand or compress the range.
-- `tam.enterprise` and `tam.midMarket` — `{ description, avgAcv, buyerCount }`. ACVs and buyer counts as raw integers. Be specific about who the buyer actually is in each segment and why they buy. `description` should make the segment feel real (named buyer personas, named example customers if any, why the motion fits).
-- `tam.sensitivity` — `{ acvs: number[], buyerCounts: number[] }`. Pick 5 ACVs spanning a realistic range (low / typical / high / stretch / aspirational) and 5 buyer counts spanning a realistic range. The component computes the cells (ACV × buyers) and shades them as a heat map automatically.
-- `tam.sources[]` — every URL you cited for the market sizing.
-- `thesis.bullCase[]` — 3–5 punchy bullets, each a specific reason this could 10x. Concrete metric, customer, or moat — not generic ("large TAM" is a fail).
-- `thesis.bearCase[]` — 3–5 bullets a sharp partner would actually voice. Specific. Naming names if relevant.
-- `thesis.keyRisks[]` — 3–5 bullets distinct from bear case: operational, regulatory, market, or execution risks that could materialize regardless of thesis.
-- `diligence.priorities[]` — 4–6 entries. Each `{ area, why, asks: [string] }`. The highest-leverage things to harden in DD: revenue quality, retention, concentration, regulatory exposure, key person risk, gross margin trajectory, etc. Each should have 1–3 specific asks (data requests or questions for the team).
-- `diligenceInsights` — **leave as `null` on the initial brief.** This populates Tab B only after the user shares actual diligence artifacts (deck, financial model, customer references, investor memo, etc.) in a follow-up turn. See "Diligence Insights tab" below.
+```html
+<section class="card">
+  <div class="card-title">Artifacts analyzed</div>
+  <ul class="card-body" style="display:flex;flex-wrap:wrap;gap:.5rem;list-style:none;padding:0;margin-top:1rem">
+    <li><span class="cat cat-press" style="display:inline-flex;align-items:center;gap:.375rem">📄 Series B deck (PDF)</span></li>
+    <li><span class="cat cat-press" style="display:inline-flex;align-items:center;gap:.375rem">📊 Financial model (XLSX)</span></li>
+  </ul>
+</section>
 
-If a section legitimately has nothing — early-stage company, no public news — pass an empty array. The component handles empty news gracefully. Don't fabricate.
+<section class="card card-thesis">
+  <div class="card-title thesis-title">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21c3 0 7-1 7-8V5c0-1.25-.756-2.017-2-2H4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2 1 0 1 0 1 1v1c0 1-1 2-2 2s-1 .008-1 1.031V20c0 1 0 1 1 1z"/><path d="M15 21c3 0 7-1 7-8V5c0-1.25-.757-2.017-2-2h-4c-1.25 0-2 .75-2 1.972V11c0 1.25.75 2 2 2h.75c0 2.25.25 4-2.75 4v3c0 1 0 1 1 1z"/></svg>
+    Synthesis
+  </div>
+  <p class="thesis-text" style="font-size:1.125rem">[1-2 paragraph eloquent synthesis of what the new info changed about your view, what it confirmed, what it overturned. Written like the lead paragraph of a partner memo update.]</p>
+</section>
+
+<!-- Then standard cards for: Key takeaways (bullets like bb-list), Updated flags
+     (use card-redflag pattern), Updated bull/bear/risks (use bb-grid pattern),
+     Updated diligence questions (use dil-list pattern), What we still don't know
+     (use bb-list pattern). -->
+```
+
+Keep the original Overview tab data unchanged when re-emitting the artifact — only the Diligence Insights pane changes. Add `class="has-insights"` to the `<main class="container">` element so the cyan pip indicator shows on the Diligence tab when the user is on the Overview tab.
 
 ## Guardrails
 
@@ -1322,105 +818,53 @@ If a section legitimately has nothing — early-stage company, no public news �
 - If uncertain about a fact, omit it. If sources disagree, surface the disagreement in one line.
 - For thesis content (core thesis / bull / bear / risks / diligence): synthesize from the facts you gathered. Be opinionated but grounded — every claim should trace back to something you searched. No "could" / "might" / "potentially" hedge-words; if it's speculative, say so explicitly with "speculative:" prefix.
 - The **core thesis** is the most important paragraph in the brief. Spend disproportionate care on it. It should pass the "would a partner actually say this in a meeting?" test — concrete, opinionated, defensible. Vague generic theses ("they're well-positioned to capture a large market") are a fail.
-- For TAM: build bottom-up. Show your work in `tam.analysis`. Cite buyer-count sources (industry counts, employee thresholds, IRS / Census / Statista numbers). The headline range should bracket reasonable enterprise + mid-market combinations — not a single point estimate. If credible top-down sources exist, use them as a sanity check on the bottom-up, not as the headline number.
-- For red flags: the bar is HIGH. Active litigation, regulatory action, fraud allegations, key-person departure mid-round, material customer churn, security incident, accounting irregularities. Routine bad news (missed quarter, layoff round, competitive loss) belongs in `news` or `bearCase`, NOT `redFlags`. Default to empty array.
-- Date-stamp via `company.asOf`.
-- For non-public or pre-seed companies where most data is unknown: produce the artifact with empty arrays where appropriate, plus a `company.note` flagging the limited public data, and a thesis/diligence focused on the unknowns themselves.
-- The component must be a single self-contained file. Only `react` and `lucide-react` imports. No external fetches at runtime (the favicon `<img>` is fine — that's just an image URL).
+- For TAM: build bottom-up. Show your work in the analysis. Cite buyer-count sources. The headline range should bracket reasonable enterprise + mid-market combinations — not a single point estimate.
+- For red flags: bar is HIGH. Active litigation, regulatory action, fraud allegations, key-person departure mid-round, material customer churn, security incident, accounting irregularities. Default to omitting the section entirely.
+- The artifact must be a single self-contained HTML document. No external CDN, no remote scripts, no remote stylesheets. Inline everything.
 
 ## Follow-up mode
 
-After producing the artifact, the user may ask follow-up questions about the company. Treat the **entire brief artifact as your operative context**: the core thesis, founders, news, competitors, TAM build, thought leadership, bull/bear/risks, diligence priorities, and any populated Diligence Insights are all in your head when you answer.
+After producing the artifact, the user may ask follow-up questions about the company. Treat the **entire brief as your operative context** — every section is in your head when answering.
 
 How to respond:
 
-- **Voice and stance.** Always answer as a thesis-driven but financially diligent investor — opinionated, specific, willing to commit to a view. Reference the brief explicitly when it's relevant ("the bear case in the brief flags X; here's how that interacts with your question…"). Avoid hedge-words; if something is genuinely uncertain, name what would resolve the uncertainty.
-- **Do additional reasoning.** Don't just retrieve from the brief. Connect dots: pricing × gross margin × scale curves; competitive moves × hiring patterns × roadmap; TAM segments × motion economics × ramp. Show your work in 1–3 short paragraphs unless the question is binary.
-- **Do additional research when helpful.** If the question needs fresh data the brief doesn't cover (specific metrics, recent announcements, new competitor moves, regulatory developments, customer references), use web_search. Cite what you find.
-- **Honest disagreements.** If the question's framing is wrong or there's a better question to be asking, say so first, then answer. A partner would.
-- **Format.** Conversational chat by default. Tight bullets when the answer is naturally a list (questions for the CEO, top risks, etc.). Don't regenerate the artifact for chat answers.
-
-Common follow-ups and how to handle them:
-- *"What would you push back on?"* — Pick the 2–3 weakest claims in the bull case or the most credulous parts of the founder narrative; argue them.
-- *"Draft N questions for the CEO."* — Specific, opinionated, designed to surface the things the brief flagged as unknown. No softball questions.
-- *"What's the bear case in one paragraph?"* — Synthesize the bear-case bullets into a flowing argument with the strongest single thread.
-- *"Compare them to <competitor>."* — Pull the existing competitor card if present; extend with deeper analysis. If the competitor isn't in the brief, search and answer fresh.
-- *"What metrics matter most?"* — Tie back to the diligence priorities; rank.
+- **Voice and stance.** Always answer as a thesis-driven but financially diligent investor — opinionated, specific, willing to commit to a view. Reference the brief explicitly when relevant ("the bear case in the brief flags X; here's how that interacts with your question…"). Avoid hedge-words; if something is uncertain, name what would resolve the uncertainty.
+- **Do additional reasoning.** Connect dots: pricing × gross margin × scale curves; competitive moves × hiring patterns × roadmap; TAM segments × motion economics × ramp. Show your work in 1–3 short paragraphs unless the question is binary.
+- **Do additional research when helpful.** If the question needs fresh data the brief doesn't cover, use web_search and cite what you find.
+- **Honest disagreements.** If the question's framing is wrong or there's a better question to be asking, say so first, then answer.
+- **Format.** Conversational chat by default. Tight bullets when the answer is naturally a list. Don't regenerate the artifact for chat answers.
 
 ### When the user shares diligence artifacts (Tab B)
 
-If the user shares structured diligence material — a data-room deck, a financial model spreadsheet, customer references, an investor memo, cohort tables, anything they'd review before signing a term sheet — **regenerate the artifact** with the **`diligenceInsights` field populated**. This switches the Diligence Insights tab from the empty state to the analytical view, and the tab indicator shows a small live dot so the user knows there's new content there.
+If the user shares structured diligence material — a data-room deck, financial model spreadsheet, customer references, investor memo, cohort tables — **regenerate the artifact** with the **diligence pane populated** (see "Diligence Insights — populated structure" above). Replace the `<div class="dil-empty">` block with cards covering:
 
-Populate `diligenceInsights` with this shape:
+- **Artifacts analyzed** — list of what you reviewed.
+- **Synthesis** — 1–2 paragraph eloquent summary of what the data changed about your view.
+- **Key takeaways** — 4–8 bullets.
+- **New flags** — any red flags surfaced by the data (use the `card-redflag` pattern).
+- **Updated bull / bear / key risks** — refined in light of the data (use the `bb-grid` + `bb-risk` pattern).
+- **Updated diligence questions** — refined for the team given what the data revealed and didn't (use the `dil-list` pattern).
+- **What we still don't know** — gaps the artifacts didn't fill.
 
-- `artifactsAnalyzed: string[]` — names / brief descriptions of what you reviewed.
-- `summary: string` — 1–2 paragraphs. Eloquent. The headline: what the data changed about your view, what it confirmed, what it overturned. Written like the lead paragraph of a partner memo update.
-- `keyTakeaways: string[]` — 4–8 bullets. The crisp list of things the data revealed.
-- `updatedFlags: { title, description }[]` — any new red flags the data surfaces. Empty array if none.
-- `updatedBullCase: string[]` — refined bull case in light of the data. Strengthen what the data supports; drop or rewrite what it weakens. If the bull case is unchanged, return the original bullets.
-- `updatedBearCase: string[]` — same treatment for the bear case.
-- `updatedKeyRisks: string[]` — same for risks. The data may surface new ones (e.g. concentration risk visible in the customer table).
-- `updatedQuestions: { area, why, asks }[]` — refined diligence questions. The data resolves some old questions and raises new ones.
-- `stillNeed: string[]` — gaps the artifacts didn't fill. Concrete and specific.
+Keep all Overview tab data unchanged when re-emitting. Add `class="has-insights"` to `<main class="container">` so the cyan pip indicator appears on the Diligence tab. Reply in chat with a 1-paragraph summary of the most important shift the new data caused, then point at the updated Diligence tab.
 
-Keep all other fields (the original `what`, `founders`, `news`, etc.) **as-is** when re-emitting the artifact — only change `diligenceInsights`. The user wants the original brief preserved and the new analysis layered on.
+If the user names a *new* company in a follow-up ("now do Mercury"), produce a fresh full artifact (with the empty-state diligence pane).
 
-Reply in chat with a 1-paragraph summary of the most important shift the new data caused, then point them at the updated Diligence Insights tab.
+## Markdown fallback
 
-If the user names a *new* company in a follow-up ("now do Mercury"), produce a fresh full artifact (with `diligenceInsights: null`).
-
-## Fallbacks when React artifacts aren't available
-
-Some Claude for Work / Enterprise workspaces disable React artifacts or all artifacts entirely. Detect this by attempting the artifact creation; if you receive an error or know from environment cues that the artifact tool isn't available, walk down this ladder:
-
-### Tier 1 — HTML artifact (`text/html`)
-
-Create a single self-contained HTML page that delivers the same brief. Load React, ReactDOM, Tailwind, and Babel from CDN, and inline the same JSX as a `<script type="text/babel">` block. The visual result is identical to the React artifact. Skeleton:
-
-```html
-<!doctype html>
-<html>
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>[Company] — Pre-Meeting Brief</title>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <style>body{margin:0;background:#000}</style>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="text/babel" data-presets="react">
-      const { useState, useRef } = React;
-      // Inline the SAME BRIEF object, helpers, and components from the React skeleton above.
-      // Replace the lucide-react icons with inline <svg> equivalents (or use a single
-      // <Icon name="..." /> wrapper) since you can't import lucide-react in a CDN setup.
-      // ReactDOM.createRoot(document.getElementById("root")).render(<Brief />);
-    </script>
-  </body>
-</html>
-```
-
-Same data shape, same look. The only adjustment is icons: replace `lucide-react` imports with inline SVG paths or a tiny `<Icon>` helper that renders one of the icons inline.
-
-### Tier 2 — Markdown artifact (`text/markdown`)
-
-If even HTML artifacts are blocked, create a markdown artifact with the brief as prose. Section structure:
+Only use this if the artifact tool is entirely unavailable (extremely rare; tell the user once: "Artifacts aren't enabled in your workspace, so I produced the brief as a markdown document instead"). Output the brief as inline markdown:
 
 ```markdown
-# [Company Name] — Pre-Meeting Brief
+# [Company] — Pre-Meeting Brief
 _as of YYYY-MM-DD_
 
-> [Optional 1-line disambiguation note if needed]
+> [Optional disambiguation note]
 
-## ⚠ Red flags
-[Only if there are MAJOR flags — same threshold as the React skeleton. Skip section entirely if none.]
+## ⚠ Red flags  (omit section if no MAJOR flags)
 - **[Title]** — [description]
 
 ## Core thesis
-[2-3 sentence reasoned bet a partner would say in a Monday meeting]
+[2-3 sentence reasoned bet]
 
 ## What they do
 **Tagline:** [10-15 words]
@@ -1437,27 +881,23 @@ _Sources: [name](url), [name](url)_
   _Notable: [signal]_
 
 ## Recent news
-[Date] · [funding/product/people/press/other] · [Source]
-**[[Title]](url)**
-[1-2 sentence takeaway]
+[Date] · [category] · [Source] — **[[Title]](url)** — [1-2 sentence takeaway]
 
 ## Thought leadership
-**[Author], [Role]** · [Source] · [Date]
-[[Title]](url)
-[1-2 sentence summary]
+**[Author], [Role]** · [Source] · [Date] — [[Title]](url) — [1-2 sentence summary]
 
 ## Competitive landscape
 [Market summary]
 
-### [Competitor name] · [domain]
+### [Competitor] · [domain]
 [Tagline]
 
 | Dimension | Verdict | Evidence |
 |---|---|---|
-| Product | Lead/Lag/Equal | [evidence] |
-| Pricing | Lead/Lag/Equal | [evidence] |
-| Perception | Lead/Lag/Equal | [evidence] |
-| Leadership | Lead/Lag/Equal | [evidence] |
+| Product | Acme leads / OpenAI leads / Even | [evidence] |
+| Pricing | … | … |
+| Perception | … | … |
+| Leadership | … | … |
 
 ## Market opportunity
 **Headline TAM:** $X – $Y (bottom-up)
@@ -1473,8 +913,7 @@ _Sources: [name](url), [name](url)_
 
 | ACV \ Buyers | N1 | N2 | N3 | N4 | N5 |
 |---|---|---|---|---|---|
-| $A1 | … | … | … | … | … |
-| $A2 | … | … | … | … | … |
+| $A1 | … |
 [etc — 5 ACV rows × 5 buyer columns]
 
 ## Investment thesis
@@ -1491,16 +930,8 @@ _Sources: [name](url), [name](url)_
 ## Diligence priorities
 1. **[Area]** — [why it matters]
    - Ask: [specific question]
-   - Ask: [specific question]
-[etc, 4-6 entries]
 
 ---
 **Diligence Insights**
 _Share key diligence artifacts and data with Claude to activate this section._
 ```
-
-When the user later shares diligence artifacts, regenerate the markdown artifact and append a populated **Diligence Insights** section with the same structure as the React tab (synthesis, key takeaways, updated flags, updated bull/bear/risks, updated questions, what we still don't know).
-
-### Tier 3 — Hard refusal
-
-If no artifact tool of any kind is available (extremely rare), tell the user once: "Artifacts aren't enabled in your workspace, so I'll produce the brief inline." Then output the markdown brief directly in the chat. **Never output the React JSX as inline code in chat — that's the worst-of-all-worlds outcome.**
