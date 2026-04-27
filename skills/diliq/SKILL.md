@@ -152,6 +152,7 @@ input[name="diliq-tab"]{position:absolute;opacity:0;pointer-events:none}
 .card-redflag::before{background:linear-gradient(to right,transparent,rgba(252,165,165,.40),transparent);opacity:1}
 .card-redflag::after{background:radial-gradient(ellipse 60% 80% at 50% 0%,rgba(244,63,94,.30),transparent 70%);opacity:.5}
 .card-redflag .card-title{color:rgba(254,205,211,1)}
+.card-redflag .card-title svg{flex-shrink:0;width:14px;height:14px}
 .flag-list{display:grid;gap:1rem}
 .flag-item{display:flex;gap:.75rem}
 .flag-item svg{flex-shrink:0;width:16px;height:16px;margin-top:2px;color:rgba(252,165,165,1)}
